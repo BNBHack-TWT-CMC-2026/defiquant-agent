@@ -38,6 +38,13 @@ Run the full local check:
 .\scripts\check.ps1
 ```
 
+## Agent And CLI Setup
+
+- Local Codex CLI notes/settings can live under `.codex/`, but that directory is intentionally ignored by git.
+- The current local agent guide is `.codex/AGENTS.md`.
+- Keep shareable project facts in tracked docs such as `README.md`, `context_info.md`, and `docs/submission_checklist.md`.
+- Use `codex` from this repo root so local Codex settings can apply in your shell.
+
 ## Architecture
 
 - `src/defiquant/strategy.py`: shared alpha model.
