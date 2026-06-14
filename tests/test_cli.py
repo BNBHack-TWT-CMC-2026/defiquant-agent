@@ -130,6 +130,47 @@ def test_execute_twak_live_rejects_notional_over_cap(
     assert fake.orders == []
 
 
+@pytest.mark.parametrize("cap", ["nan", "inf", "-inf"])
+def test_execute_twak_live_rejects_non_finite_cap(
+    monkeypatch: pytest.MonkeyPatch,
+    cap: str,
+) -> None:
+    fake = FakeTwakAdapter
+    fake.instances = []
+    fake.portfolio_reads = 0
+    fake.quote_orders = []
+    fake.orders = []
+    monkeypatch.setattr("defiquant.cli.TwakCliExecutionAdapter", fake)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "defiquant",
+            "execute",
+            "--fixture",
+            "--adapter",
+            "twak",
+            "--portfolio",
+            "twak",
+            "--validate-quotes",
+            "--live",
+            "--confirm-live",
+            LIVE_CONFIRMATION_PHRASE,
+            f"--max-live-notional-usd={cap}",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    message = str(exc.value)
+    assert "Live TWAK guard failed" in message
+    assert "finite --max-live-notional-usd greater than 0" in message
+    assert fake.portfolio_reads == 1
+    assert fake.quote_orders == []
+    assert fake.orders == []
+
+
 def test_execute_twak_live_calls_adapter_when_guard_passes(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

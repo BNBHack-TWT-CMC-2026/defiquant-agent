@@ -4,6 +4,7 @@ import argparse
 import json
 from collections.abc import Sequence
 from datetime import date
+from math import isfinite
 from pathlib import Path
 
 from defiquant.agent_profile import build_agent_profile
@@ -276,8 +277,8 @@ def _validate_twak_live_preflight(
         errors.append("--live requires --validate-quotes")
     if args.confirm_live != LIVE_CONFIRMATION_PHRASE:
         errors.append(f"--confirm-live must exactly match {LIVE_CONFIRMATION_PHRASE}")
-    if max_notional <= 0:
-        errors.append("--live requires --max-live-notional-usd greater than 0")
+    if not isfinite(max_notional) or max_notional <= 0:
+        errors.append("--live requires finite --max-live-notional-usd greater than 0")
     if not orders:
         errors.append("--live requires at least one planned order")
 
