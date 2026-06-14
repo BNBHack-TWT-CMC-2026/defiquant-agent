@@ -39,6 +39,11 @@ def main() -> None:
         default="backtest",
         help="Portfolio state source for order planning; default backtest cash.",
     )
+    execute.add_argument(
+        "--validate-quotes",
+        action="store_true",
+        help="Run TWAK quote-only validation before returning the execution plan.",
+    )
 
     register = subparsers.add_parser("register-track1")
     _add_live_args(register)
@@ -123,20 +128,31 @@ def main() -> None:
         return
 
     orders = risk.build_orders(signals, portfolio, prices)
-    if args.adapter == "twak" and not args.dry_run:
-        raise SystemExit(
-            "Live TWAK swap submission is disabled until quote validation is wired. "
-            "Use --dry-run --portfolio twak for wallet-based planning."
-        )
-    adapter = (
-        TwakCliExecutionAdapter(
+    if args.validate_quotes and args.adapter != "twak":
+        raise SystemExit("--validate-quotes requires --adapter twak")
+
+    if args.adapter == "twak":
+        adapter = TwakCliExecutionAdapter(
             dry_run=args.dry_run,
             stable_symbol=config.strategy.stable_symbol,
         )
-        if args.adapter == "twak"
-        else PaperExecutionAdapter()
+        quote_results = adapter.validate_quotes(orders) if args.validate_quotes else None
+        if not args.dry_run:
+            raise SystemExit(
+                "Live TWAK swap submission is disabled until explicit live enablement is added. "
+                "Use --dry-run --portfolio twak --validate-quotes for wallet-based rehearsal."
+            )
+    else:
+        adapter = PaperExecutionAdapter()
+        quote_results = None
+
+    execution_results = adapter.execute(orders)
+    output = (
+        {"quotes": quote_results, "execution": execution_results}
+        if quote_results is not None
+        else execution_results
     )
-    print(json.dumps(adapter.execute(orders), indent=2))
+    print(json.dumps(to_jsonable(output), indent=2))
 
 
 def _add_live_args(parser: argparse.ArgumentParser) -> None:
