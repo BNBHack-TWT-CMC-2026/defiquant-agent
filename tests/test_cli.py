@@ -60,9 +60,45 @@ def test_execute_twak_can_plan_from_wallet_portfolio(
     assert sum(order.notional for order in fake.orders) <= 25.01
 
 
+def test_execute_twak_can_validate_quotes(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake = FakeTwakAdapter
+    fake.quote_orders = []
+    fake.orders = []
+    monkeypatch.setattr("defiquant.cli.TwakCliExecutionAdapter", fake)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "execute", "--fixture", "--adapter", "twak", "--validate-quotes"],
+    )
+
+    main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["quotes"]
+    assert payload["execution"]
+    assert fake.quote_orders == fake.orders
+
+
+def test_execute_validate_quotes_requires_twak_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "execute", "--fixture", "--adapter", "paper", "--validate-quotes"],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert str(exc.value) == "--validate-quotes requires --adapter twak"
+
+
 class FakeTwakAdapter:
     portfolio_reads = 0
     orders: ClassVar[list[Order]] = []
+    quote_orders: ClassVar[list[Order]] = []
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         self.chain = "bsc"
@@ -74,3 +110,10 @@ class FakeTwakAdapter:
     def execute(self, orders: list[Order]) -> list[str]:
         type(self).orders = orders
         return [f"{order.side}:{order.symbol}:{order.notional:.2f}" for order in orders]
+
+    def validate_quotes(self, orders: list[Order]) -> list[dict[str, object]]:
+        type(self).quote_orders = orders
+        return [
+            {"symbol": order.symbol, "side": order.side, "quote": {"provider": "test"}}
+            for order in orders
+        ]

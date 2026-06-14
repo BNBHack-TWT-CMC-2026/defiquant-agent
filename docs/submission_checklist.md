@@ -49,6 +49,6 @@
 - CMC x402 MCP demo path with spend limits.
 - TWAK CLI for `twak swap` execution plans using BSC token contract addresses.
 - TWAK wallet portfolio loading for dry-run order planning.
-- TWAK quote validation before enabling live swap submission.
+- TWAK quote-only validation for planned swaps before enabling live swap submission.
 - TWAK `compete register` registration path before the Track 1 deadline.
 - BNB Agent SDK ERC-8004 identity path for discoverability.

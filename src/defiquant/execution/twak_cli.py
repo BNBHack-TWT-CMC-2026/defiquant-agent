@@ -5,12 +5,21 @@ import shlex
 import shutil
 import subprocess
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from defiquant.env import env_bool, env_value
 from defiquant.execution.base import ExecutionAdapter
 from defiquant.models import Order
+
+
+@dataclass(frozen=True)
+class TwakQuoteValidation:
+    symbol: str
+    side: str
+    command: list[str]
+    quote: dict[str, Any]
 
 
 class TwakCliExecutionAdapter(ExecutionAdapter):
@@ -50,6 +59,15 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
             results.append(completed.stdout.strip())
         return results
 
+    def validate_quotes(self, orders: list[Order]) -> list[TwakQuoteValidation]:
+        results: list[TwakQuoteValidation] = []
+        for order in orders:
+            command = self._swap_command(order, quote_only=True)
+            completed = _run_command(command)
+            quote = _parse_quote_response(completed.stdout)
+            results.append(TwakQuoteValidation(order.symbol, order.side, command, quote))
+        return results
+
     def register_competition(self) -> str:
         command = [*self.cli_command, "compete", "register"]
         if self.dry_run:
@@ -71,7 +89,7 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
         completed = _run_command(command)
         return json.loads(completed.stdout)
 
-    def _swap_command(self, order: Order) -> list[str]:
+    def _swap_command(self, order: Order, quote_only: bool | None = None) -> list[str]:
         amount = order.source_amount if order.source_amount is not None else order.notional
         source_symbol = self.stable_symbol if order.side == "buy" else order.symbol
         target_symbol = order.symbol if order.side == "buy" else self.stable_symbol
@@ -89,7 +107,8 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
             _format_amount(self.slippage_percent),
             "--json",
         ]
-        if self.quote_only:
+        effective_quote_only = self.quote_only if quote_only is None else quote_only
+        if effective_quote_only:
             command.append("--quote-only")
         return command
 
@@ -123,6 +142,22 @@ def _resolve_command(command: list[str]) -> list[str]:
     if executable is None:
         return command
     return [executable, *command[1:]]
+
+
+def _parse_quote_response(stdout: str) -> dict[str, Any]:
+    if not stdout.strip():
+        raise RuntimeError("TWAK quote returned empty output")
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("TWAK quote returned invalid JSON") from exc
+
+    if not isinstance(payload, dict):
+        raise RuntimeError("TWAK quote JSON must be an object")
+    error = payload.get("error") or payload.get("errorCode")
+    if error:
+        raise RuntimeError(f"TWAK quote failed: {error}")
+    return payload
 
 
 def _load_token_addresses(chain: str, configured_path: str | None) -> dict[str, str]:
