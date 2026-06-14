@@ -8,7 +8,7 @@ def test_twak_dry_run_builds_swap_commands() -> None:
     adapter = TwakCliExecutionAdapter(
         dry_run=True,
         cli_path="twak",
-        chain="bnb",
+        chain="bsc",
         stable_symbol="USDT",
         slippage_percent=0.5,
         quote_only=True,
@@ -22,9 +22,9 @@ def test_twak_dry_run_builds_swap_commands() -> None:
     )
 
     assert results == [
-        'twak-dry-run:["twak","swap","100","USDT","CAKE","--chain","bnb",'
+        'twak-dry-run:["twak","swap","100","USDT","CAKE","--chain","bsc",'
         '"--slippage","0.5","--json","--quote-only"]',
-        'twak-dry-run:["twak","swap","0.25","AAVE","USDT","--chain","bnb",'
+        'twak-dry-run:["twak","swap","0.25","AAVE","USDT","--chain","bsc",'
         '"--slippage","0.5","--json","--quote-only"]',
     ]
 
@@ -39,10 +39,10 @@ def test_twak_cli_prefix_accepts_npx_command() -> None:
     adapter = TwakCliExecutionAdapter(
         dry_run=True,
         cli_path="npx @trustwallet/cli",
-        chain="bnb",
+        chain="bsc",
     )
 
     assert (
         adapter.wallet_address() == 'twak-dry-run:["npx","@trustwallet/cli","wallet","address",'
-        '"--chain","bnb","--json"]'
+        '"--chain","bsc","--json"]'
     )

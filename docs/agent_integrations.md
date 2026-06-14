@@ -52,8 +52,8 @@ Install and authenticate TWAK from the official portal, then verify:
 
 ```powershell
 twak auth status --json
-twak wallet address --chain bnb --json
-twak wallet portfolio --chains bnb --json
+twak wallet address --chain bsc --json
+twak wallet portfolio --chains bsc --json
 ```
 
 defiQuant's TWAK adapter emits `twak swap` commands. Dry-run mode returns the

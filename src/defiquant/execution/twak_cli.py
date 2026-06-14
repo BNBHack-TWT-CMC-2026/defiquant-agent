@@ -22,7 +22,7 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
     ) -> None:
         self.dry_run = dry_run
         self.cli_command = _command_prefix(cli_path or env_value("TWAK_CLI", "twak"))
-        self.chain = chain or env_value("TWAK_CHAIN", "bnb")
+        self.chain = chain or env_value("TWAK_CHAIN", "bsc")
         self.stable_symbol = stable_symbol or env_value("TWAK_STABLE_SYMBOL", "USDT")
         self.slippage_percent = slippage_percent or float(env_value("TWAK_SLIPPAGE_PERCENT", "1"))
         self.quote_only = (
