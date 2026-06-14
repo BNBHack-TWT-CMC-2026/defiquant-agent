@@ -4,6 +4,8 @@ import json
 import shlex
 import subprocess
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
 
 from defiquant.env import env_bool, env_value
 from defiquant.execution.base import ExecutionAdapter
@@ -19,6 +21,8 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
         stable_symbol: str | None = None,
         slippage_percent: float | None = None,
         quote_only: bool | None = None,
+        token_addresses: dict[str, str] | None = None,
+        token_addresses_path: str | None = None,
     ) -> None:
         self.dry_run = dry_run
         self.cli_command = _command_prefix(cli_path or env_value("TWAK_CLI", "twak"))
@@ -27,6 +31,11 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
         self.slippage_percent = slippage_percent or float(env_value("TWAK_SLIPPAGE_PERCENT", "1"))
         self.quote_only = (
             quote_only if quote_only is not None else env_bool("TWAK_QUOTE_ONLY", True)
+        )
+        self.token_addresses = _normalize_addresses(
+            token_addresses
+            if token_addresses is not None
+            else _load_token_addresses(self.chain, token_addresses_path)
         )
 
     def execute(self, orders: list[Order]) -> list[str]:
@@ -58,8 +67,10 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
 
     def _swap_command(self, order: Order) -> list[str]:
         amount = order.source_amount if order.source_amount is not None else order.notional
-        source = self.stable_symbol if order.side == "buy" else order.symbol
-        target = order.symbol if order.side == "buy" else self.stable_symbol
+        source_symbol = self.stable_symbol if order.side == "buy" else order.symbol
+        target_symbol = order.symbol if order.side == "buy" else self.stable_symbol
+        source = self._token_ref(source_symbol)
+        target = self._token_ref(target_symbol)
         command = [
             *self.cli_command,
             "swap",
@@ -76,6 +87,14 @@ class TwakCliExecutionAdapter(ExecutionAdapter):
             command.append("--quote-only")
         return command
 
+    def _token_ref(self, symbol: str) -> str:
+        token_ref = self.token_addresses.get(symbol.upper())
+        if token_ref:
+            return token_ref
+        if self.chain == "bsc":
+            raise ValueError(f"Missing BSC token address for {symbol}")
+        return symbol
+
 
 def _command_prefix(value: str) -> list[str]:
     return shlex.split(value, posix=False) or ["twak"]
@@ -87,3 +106,29 @@ def _format_amount(value: float) -> str:
 
 def _format_command(command: Sequence[str]) -> str:
     return json.dumps(list(command), separators=(",", ":"))
+
+
+def _load_token_addresses(chain: str, configured_path: str | None) -> dict[str, str]:
+    path_value = configured_path or env_value(
+        "TWAK_TOKEN_ADDRESSES_PATH",
+        f"configs/token_addresses.{chain}.json",
+    )
+    path = Path(path_value)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    if not path.is_file():
+        return {}
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Token address file must be a JSON object: {path}")
+    return _normalize_addresses(payload)
+
+
+def _normalize_addresses(payload: dict[str, Any]) -> dict[str, str]:
+    addresses: dict[str, str] = {}
+    for symbol, address in payload.items():
+        if not isinstance(symbol, str) or not isinstance(address, str):
+            raise ValueError("Token address mappings must be string to string")
+        addresses[symbol.upper()] = address
+    return addresses

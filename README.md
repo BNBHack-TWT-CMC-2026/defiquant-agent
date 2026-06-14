@@ -113,7 +113,8 @@ Weights are inverse-volatility adjusted, capped per asset, and forced to keep a 
 
 ## Safety Defaults
 
-- Live execution is disabled unless `TWAK_DRY_RUN=false`.
+- TWAK swap submission defaults to dry-run and remains blocked until wallet portfolio loading is wired.
+- One-way external actions such as Track 1 or BNB Agent registration require `--live`.
 - The max drawdown default is below the example disqualification threshold.
 - Strategy config loading fails if the universe includes tokens outside the competition allowlist.
 - Backtest output reports whether the strategy meets the minimum 7 qualified trade days.

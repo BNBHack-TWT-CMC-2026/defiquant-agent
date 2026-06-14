@@ -12,6 +12,11 @@ def test_twak_dry_run_builds_swap_commands() -> None:
         stable_symbol="USDT",
         slippage_percent=0.5,
         quote_only=True,
+        token_addresses={
+            "AAVE": "0xAave",
+            "CAKE": "0xCake",
+            "USDT": "0xUsdt",
+        },
     )
 
     results = adapter.execute(
@@ -22,9 +27,9 @@ def test_twak_dry_run_builds_swap_commands() -> None:
     )
 
     assert results == [
-        'twak-dry-run:["twak","swap","100","USDT","CAKE","--chain","bsc",'
+        'twak-dry-run:["twak","swap","100","0xUsdt","0xCake","--chain","bsc",'
         '"--slippage","0.5","--json","--quote-only"]',
-        'twak-dry-run:["twak","swap","0.25","AAVE","USDT","--chain","bsc",'
+        'twak-dry-run:["twak","swap","0.25","0xAave","0xUsdt","--chain","bsc",'
         '"--slippage","0.5","--json","--quote-only"]',
     ]
 
@@ -46,3 +51,20 @@ def test_twak_cli_prefix_accepts_npx_command() -> None:
         adapter.wallet_address() == 'twak-dry-run:["npx","@trustwallet/cli","wallet","address",'
         '"--chain","bsc","--json"]'
     )
+
+
+def test_twak_bsc_swap_requires_token_addresses() -> None:
+    adapter = TwakCliExecutionAdapter(
+        dry_run=True,
+        cli_path="twak",
+        chain="bsc",
+        stable_symbol="USDT",
+        token_addresses={"USDT": "0xUsdt"},
+    )
+
+    try:
+        adapter.execute([Order("CAKE", "buy", 100.0, 0.1, "rebalance")])
+    except ValueError as exc:
+        assert str(exc) == "Missing BSC token address for CAKE"
+    else:
+        raise AssertionError("Expected missing token address to fail closed")

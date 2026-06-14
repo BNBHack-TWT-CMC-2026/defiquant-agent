@@ -21,10 +21,9 @@ The agent-facing path is configured through MCP:
 configs/mcp/cmc-mcp.json
 ```
 
-Use this MCP config in Codex, Cursor, Claude, or another MCP-compatible client
-to ask CMC Agent Hub for read-only market context such as latest quotes,
-technical analysis, market metrics, trending narratives, and news. CMC MCP does
-not execute trades.
+Use this MCP config in an MCP-compatible client to ask CMC Agent Hub for
+read-only market context such as latest quotes, technical analysis, market
+metrics, trending narratives, and news. CMC MCP does not execute trades.
 
 For x402 evidence, use:
 
@@ -56,18 +55,16 @@ twak wallet address --chain bsc --json
 twak wallet portfolio --chains bsc --json
 ```
 
-defiQuant's TWAK adapter emits `twak swap` commands. Dry-run mode returns the
+defiQuant's TWAK adapter emits `twak swap` command plans with BSC contract
+addresses from `configs/token_addresses.bsc.json`. Dry-run mode returns the
 exact command plan without signing:
 
 ```powershell
 uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak --dry-run
 ```
 
-Only switch off dry-run after testnet rehearsal:
-
-```powershell
-uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak
-```
+Live swap submission is intentionally blocked until the CLI loads actual TWAK
+wallet portfolio balances instead of using backtest cash assumptions.
 
 ## Track 1 Registration
 
@@ -75,7 +72,7 @@ Track 1 registration is a hackathon-specific TWAK action:
 
 ```powershell
 uv run defiquant register-track1 --dry-run
-uv run defiquant register-track1
+uv run defiquant register-track1 --live
 ```
 
 Store the BSC agent wallet address, registration transaction hash, and later
@@ -107,5 +104,5 @@ uv run defiquant bnb-register --agent-url https://example.com --dry-run
 Register when the wallet and metadata are correct:
 
 ```powershell
-uv run defiquant bnb-register --agent-url https://example.com
+uv run defiquant bnb-register --agent-url https://example.com --live
 ```

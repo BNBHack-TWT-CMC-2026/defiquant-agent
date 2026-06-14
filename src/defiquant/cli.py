@@ -30,11 +30,11 @@ def main() -> None:
 
     execute = subparsers.add_parser("execute")
     _add_market_args(execute)
-    execute.add_argument("--dry-run", action="store_true")
+    _add_live_args(execute)
     execute.add_argument("--adapter", choices=("paper", "twak"), default="paper")
 
     register = subparsers.add_parser("register-track1")
-    register.add_argument("--dry-run", action="store_true")
+    _add_live_args(register)
     register.add_argument("--chain", default=None)
 
     profile = subparsers.add_parser("profile")
@@ -46,7 +46,7 @@ def main() -> None:
     bnb_register.add_argument("--config", default="configs/strategy.json")
     bnb_register.add_argument("--agent-url", required=True)
     bnb_register.add_argument("--wallet-address", default="")
-    bnb_register.add_argument("--dry-run", action="store_true")
+    _add_live_args(bnb_register)
 
     args = parser.parse_args()
 
@@ -119,6 +119,11 @@ def main() -> None:
         return
 
     orders = risk.build_orders(signals, portfolio, prices)
+    if args.adapter == "twak" and not args.dry_run:
+        raise SystemExit(
+            "Live TWAK swap submission is disabled until wallet portfolio loading is wired. "
+            "Use the default dry-run plan for now."
+        )
     adapter = (
         TwakCliExecutionAdapter(
             dry_run=args.dry_run,
@@ -128,6 +133,22 @@ def main() -> None:
         else PaperExecutionAdapter()
     )
     print(json.dumps(adapter.execute(orders), indent=2))
+
+
+def _add_live_args(parser: argparse.ArgumentParser) -> None:
+    parser.set_defaults(dry_run=True)
+    parser.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Preview the action without submitting transactions. This is the default.",
+    )
+    parser.add_argument(
+        "--live",
+        dest="dry_run",
+        action="store_false",
+        help="Submit the external action. Use only after rehearsal and explicit approval.",
+    )
 
 
 def _add_market_args(parser: argparse.ArgumentParser) -> None:
