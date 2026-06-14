@@ -104,6 +104,9 @@ def main() -> None:
         print(json.dumps(to_jsonable(result), indent=2))
         return
 
+    if args.command == "execute" and args.adapter == "twak" and not args.dry_run:
+        _validate_twak_live_static_args(args)
+
     market = _load_market(
         args.fixture,
         config.universe_symbols,
@@ -267,18 +270,10 @@ def _validate_twak_live_preflight(
     args: argparse.Namespace,
     orders: list[Order],
 ) -> None:
-    errors: list[str] = []
+    errors = _twak_live_static_errors(args)
     max_notional = args.max_live_notional_usd
     total_notional = sum(order.notional for order in orders)
 
-    if args.portfolio != "twak":
-        errors.append("--live requires --portfolio twak")
-    if not args.validate_quotes:
-        errors.append("--live requires --validate-quotes")
-    if args.confirm_live != LIVE_CONFIRMATION_PHRASE:
-        errors.append(f"--confirm-live must exactly match {LIVE_CONFIRMATION_PHRASE}")
-    if not isfinite(max_notional) or max_notional <= 0:
-        errors.append("--live requires finite --max-live-notional-usd greater than 0")
     if not orders:
         errors.append("--live requires at least one planned order")
 
@@ -294,6 +289,27 @@ def _validate_twak_live_preflight(
 
     if errors:
         raise SystemExit("Live TWAK guard failed:\n- " + "\n- ".join(errors))
+
+
+def _validate_twak_live_static_args(args: argparse.Namespace) -> None:
+    errors = _twak_live_static_errors(args)
+    if errors:
+        raise SystemExit("Live TWAK guard failed:\n- " + "\n- ".join(errors))
+
+
+def _twak_live_static_errors(args: argparse.Namespace) -> list[str]:
+    errors: list[str] = []
+    max_notional = args.max_live_notional_usd
+
+    if args.portfolio != "twak":
+        errors.append("--live requires --portfolio twak")
+    if not args.validate_quotes:
+        errors.append("--live requires --validate-quotes")
+    if args.confirm_live != LIVE_CONFIRMATION_PHRASE:
+        errors.append(f"--confirm-live must exactly match {LIVE_CONFIRMATION_PHRASE}")
+    if not isfinite(max_notional) or max_notional <= 0:
+        errors.append("--live requires finite --max-live-notional-usd greater than 0")
+    return errors
 
 
 def _validate_twak_live_quotes(

@@ -166,7 +166,7 @@ def test_execute_twak_live_rejects_non_finite_cap(
     message = str(exc.value)
     assert "Live TWAK guard failed" in message
     assert "finite --max-live-notional-usd greater than 0" in message
-    assert fake.portfolio_reads == 1
+    assert fake.portfolio_reads == 0
     assert fake.quote_orders == []
     assert fake.orders == []
 
