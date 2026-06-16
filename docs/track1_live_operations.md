@@ -55,11 +55,28 @@ uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter 
 
 ## Live Trade Command Shape
 
+Run the read-only alpha decision first:
+
+```powershell
+uv run defiquant scan-alpha --symbols-source tradable --top 10
+```
+
+Then choose one of the reviewed mode configs:
+
+- `configs/strategy.aggressive.json`
+- `configs/strategy.balanced.json`
+- `configs/strategy.defensive.json`
+
 The only allowed live execution shape is:
 
 ```powershell
-uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --live --confirm-live I_UNDERSTAND_TWAK_LIVE_SWAP_RISK --max-live-notional-usd 1
+uv run defiquant execute --config configs/strategy.<selected>.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --live --confirm-live I_UNDERSTAND_TWAK_LIVE_SWAP_RISK --max-live-notional-usd 1
 ```
+
+Replace `<selected>` with `aggressive`, `balanced`, or `defensive` only after
+the matching dry-run and quote validation have been captured. For the first
+approved smoke trade, prefer `defensive` unless the approval explicitly names a
+different mode and cap.
 
 Choose the cap from `configs/live_operations.json`:
 
@@ -72,12 +89,13 @@ Choose the cap from `configs/live_operations.json`:
 During `2026-06-22T00:00:00Z` to `2026-06-28T23:59:59Z`:
 
 1. Run read-only preflight.
-2. Run CMC-backed signal or dry-run execution planning.
-3. Run TWAK quote validation in dry-run mode.
-4. Check the planned order count and total notional.
-5. If live execution is needed, stop for approval if the cap or command differs
+2. Run `scan-alpha` and record the recommended mode.
+3. Run CMC-backed dry-run execution planning with the selected mode config.
+4. Run TWAK quote validation in dry-run mode.
+5. Check the planned order count and total notional.
+6. If live execution is needed, stop for approval if the cap or command differs
    from the current approved run.
-6. Capture tx hash, command output, UTC/KST timestamp, and daily notes.
+7. Capture tx hash, command output, UTC/KST timestamp, and daily notes.
 
 ## Halt Criteria
 
@@ -85,6 +103,7 @@ Stop live activity when any condition is true:
 
 - TWAK auth, wallet address, or wallet portfolio check fails.
 - CMC data loading fails or uses stale candles.
+- Alpha mode selection cannot be reproduced from saved scan output.
 - Quote validation fails for any planned order.
 - Planned order or batch exceeds the approved live notional cap.
 - Any symbol is outside `configs/eligible_tokens.json`.

@@ -21,6 +21,7 @@
 ## Demo Evidence
 
 - Show CMC data flowing into the strategy.
+- Show `scan-alpha` latest-quote mode selection and the three reviewed strategy modes.
 - Show CMC Agent Hub MCP configuration from `configs/mcp/cmc-mcp.json`.
 - Show CMC Agent Hub read-only context template from `configs/cmc_agent_context.json`.
 - Show CMC x402 MCP configuration from `configs/mcp/cmc-x402.json` if the wallet/client is funded.
@@ -51,6 +52,7 @@
 ## Integration Must-Haves
 
 - CMC REST API for deterministic OHLCV backtests.
+- CMC latest quotes for read-only Track 1 alpha mode selection.
 - CMC MCP for agent-ready read-only market context.
 - CMC Agent Hub context runbook with non-execution boundary.
 - CMC x402 MCP demo path with spend limits.

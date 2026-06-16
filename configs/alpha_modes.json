@@ -1,0 +1,42 @@
+{
+  "purpose": "Track 1 live PnL mode switching under drawdown risk gate.",
+  "mode_order": ["aggressive", "balanced", "defensive"],
+  "modes": [
+    {
+      "name": "aggressive",
+      "top_n": 5,
+      "min_score": -0.08,
+      "max_position_weight": 0.1,
+      "min_cash_weight": 0.3,
+      "max_daily_turnover": 0.25,
+      "activation": {
+        "min_top_score": 7.0,
+        "min_market_breadth": 0.45
+      }
+    },
+    {
+      "name": "balanced",
+      "top_n": 5,
+      "min_score": -0.04,
+      "max_position_weight": 0.1,
+      "min_cash_weight": 0.35,
+      "max_daily_turnover": 0.2,
+      "activation": {
+        "min_top_score": 1.0,
+        "min_market_breadth": 0.3
+      }
+    },
+    {
+      "name": "defensive",
+      "top_n": 3,
+      "min_score": 0.0,
+      "max_position_weight": 0.07,
+      "min_cash_weight": 0.5,
+      "max_daily_turnover": 0.12,
+      "activation": {
+        "max_top_score": 1.0,
+        "max_market_breadth": 0.3
+      }
+    }
+  ]
+}

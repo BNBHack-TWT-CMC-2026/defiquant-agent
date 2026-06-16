@@ -10,10 +10,11 @@ from pathlib import Path
 
 from defiquant.agent_endpoint import build_agent_endpoint_payloads
 from defiquant.agent_profile import build_agent_profile
+from defiquant.alpha import load_alpha_modes, load_token_addresses, scan_alpha_quotes
 from defiquant.backtest import Backtester
 from defiquant.bnb_agent import preview_bnb_registration, register_bnb_agent
 from defiquant.config import AppConfig, load_config, to_jsonable
-from defiquant.data.cmc import DEFAULT_CMC_HISTORY_DAYS, load_cmc_market
+from defiquant.data.cmc import DEFAULT_CMC_HISTORY_DAYS, load_cmc_latest_quotes, load_cmc_market
 from defiquant.data.fixtures import fixture_market
 from defiquant.execution.paper import PaperExecutionAdapter
 from defiquant.execution.twak_cli import TwakCliExecutionAdapter
@@ -41,6 +42,18 @@ def main() -> None:
     _add_market_args(tune_risk)
     tune_risk.add_argument("--candidates", default="configs/risk_tuning.json")
     tune_risk.add_argument("--top", type=int, default=5)
+
+    scan_alpha = subparsers.add_parser("scan-alpha")
+    scan_alpha.add_argument("--config", default="configs/strategy.json")
+    scan_alpha.add_argument("--modes", default="configs/alpha_modes.json")
+    scan_alpha.add_argument("--token-addresses", default="configs/token_addresses.bsc.json")
+    scan_alpha.add_argument(
+        "--symbols-source",
+        choices=("config", "tradable", "eligible"),
+        default="tradable",
+        help="Symbol set to scan with CMC latest quotes.",
+    )
+    scan_alpha.add_argument("--top", type=int, default=10)
 
     execute = subparsers.add_parser("execute")
     _add_market_args(execute)
@@ -192,6 +205,30 @@ def main() -> None:
         )
         return
 
+    if args.command == "scan-alpha":
+        token_addresses = load_token_addresses(Path(args.token_addresses))
+        symbols = _alpha_symbols(args.symbols_source, config, token_addresses)
+        quotes = load_cmc_latest_quotes(symbols)
+        result = scan_alpha_quotes(
+            quotes,
+            token_addresses=token_addresses,
+            top=max(1, args.top),
+            modes=load_alpha_modes(Path(args.modes)),
+        )
+        print(
+            json.dumps(
+                {
+                    "symbols_source": args.symbols_source,
+                    "symbols_requested": len(symbols),
+                    "modes_path": args.modes,
+                    "token_addresses_path": args.token_addresses,
+                    **result,
+                },
+                indent=2,
+            )
+        )
+        return
+
     if args.command == "execute" and args.adapter == "twak" and not args.dry_run:
         _validate_twak_live_static_args(args)
 
@@ -322,6 +359,22 @@ def _load_market(
         except (OSError, RuntimeError, ValueError) as exc:
             raise SystemExit(f"CMC market loading failed: {exc}") from exc
     return fixture_market(symbols)
+
+
+def _alpha_symbols(
+    source: str,
+    config: AppConfig,
+    token_addresses: dict[str, str],
+) -> tuple[str, ...]:
+    if source == "config":
+        return config.universe_symbols
+    if source == "tradable":
+        return tuple(
+            symbol
+            for symbol in config.universe_symbols
+            if symbol.upper() in token_addresses or symbol == config.strategy.stable_symbol
+        )
+    return tuple(sorted(config.eligible_symbols))
 
 
 def _load_portfolio(
