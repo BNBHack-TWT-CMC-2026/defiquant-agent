@@ -70,8 +70,13 @@ Then choose one of the reviewed mode configs:
 The only allowed live execution shape is:
 
 ```powershell
-uv run defiquant execute --config configs/strategy.defensive.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --live --confirm-live I_UNDERSTAND_TWAK_LIVE_SWAP_RISK --max-live-notional-usd 1
+uv run defiquant execute --config configs/strategy.<selected>.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --live --confirm-live I_UNDERSTAND_TWAK_LIVE_SWAP_RISK --max-live-notional-usd 1
 ```
+
+Replace `<selected>` with `aggressive`, `balanced`, or `defensive` only after
+the matching dry-run and quote validation have been captured. For the first
+approved smoke trade, prefer `defensive` unless the approval explicitly names a
+different mode and cap.
 
 Choose the cap from `configs/live_operations.json`:
 
