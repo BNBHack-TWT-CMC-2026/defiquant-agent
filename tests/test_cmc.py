@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 from typing import Any
 
-from defiquant.data.cmc import CmcClient, load_cmc_market, parse_ohlcv
+from defiquant.data.cmc import (
+    CmcClient,
+    load_cmc_latest_quotes,
+    load_cmc_market,
+    parse_latest_quotes,
+    parse_ohlcv,
+)
 
 
 def test_parse_ohlcv_accepts_direct_cmc_payload() -> None:
@@ -66,6 +73,115 @@ def test_latest_quotes_uses_current_cmc_endpoint() -> None:
     ]
 
 
+def test_client_accepts_string_zero_error_code(monkeypatch: Any) -> None:
+    payload = {"status": {"error_code": "0"}, "data": {}}
+
+    def fake_urlopen(request: Any, timeout: int) -> FakeResponse:
+        assert timeout == 30
+        assert "https://example.test/v3/cryptocurrency/quotes/latest" in request.full_url
+        return FakeResponse(payload)
+
+    monkeypatch.setattr("defiquant.data.cmc.urlopen", fake_urlopen)
+    client = CmcClient(api_key="test-key", base_url="https://example.test")
+
+    assert client.get_latest_quotes(("CAKE",)) == payload
+
+
+def test_parse_latest_quotes_extracts_momentum_fields() -> None:
+    payload = {
+        "status": {"error_code": 0},
+        "data": {
+            "CAKE": {
+                "symbol": "CAKE",
+                "name": "PancakeSwap",
+                "platform": {
+                    "name": "BNB Smart Chain",
+                    "symbol": "BNB",
+                    "token_address": "0xCake",
+                },
+                "quote": {
+                    "USD": {
+                        "price": 2.1,
+                        "volume_24h": 1_000_000,
+                        "market_cap": 20_000_000,
+                        "percent_change_1h": 1.2,
+                        "percent_change_24h": 4.5,
+                        "percent_change_7d": 9.0,
+                    }
+                },
+            }
+        },
+    }
+
+    quotes = parse_latest_quotes(payload, requested_symbols=("CAKE",))
+
+    assert quotes["CAKE"]["price"] == 2.1
+    assert quotes["CAKE"]["percent_change_24h"] == 4.5
+    assert quotes["CAKE"]["token_address"] == "0xCake"
+
+
+def test_parse_latest_quotes_accepts_v3_quote_list_and_keeps_liquid_duplicate() -> None:
+    payload = {
+        "status": {"error_code": "0"},
+        "data": [
+            {
+                "symbol": "CAKE",
+                "name": "PancakeSwap",
+                "quote": [
+                    {
+                        "symbol": "USD",
+                        "price": 1.4,
+                        "volume_24h": 23_000_000,
+                        "market_cap": 450_000_000,
+                        "percent_change_1h": 0.6,
+                        "percent_change_24h": -0.4,
+                        "percent_change_7d": 7.5,
+                    }
+                ],
+            },
+            {
+                "symbol": "CAKE",
+                "name": "CakeDAO",
+                "quote": [
+                    {
+                        "symbol": "USD",
+                        "price": None,
+                        "volume_24h": 0,
+                        "market_cap": None,
+                        "percent_change_1h": 0,
+                        "percent_change_24h": 0,
+                        "percent_change_7d": 0.2,
+                    }
+                ],
+            },
+        ],
+    }
+
+    quotes = parse_latest_quotes(payload, requested_symbols=("CAKE",))
+
+    assert quotes["CAKE"]["name"] == "PancakeSwap"
+    assert quotes["CAKE"]["price"] == 1.4
+    assert quotes["CAKE"]["percent_change_7d"] == 7.5
+
+
+def test_load_cmc_latest_quotes_batches_and_skips_invalid() -> None:
+    client = RecordingCmcClient()
+
+    quotes = load_cmc_latest_quotes(("CAKE", "LINK"), client=client, batch_size=1)
+
+    assert sorted(quotes) == ["CAKE", "LINK"]
+    assert client.calls == [
+        (
+            "/v3/cryptocurrency/quotes/latest",
+            {"symbol": "CAKE", "convert": "USD", "skip_invalid": "true"},
+        ),
+        (
+            "/v3/cryptocurrency/quotes/latest",
+            {"symbol": "LINK", "convert": "USD", "skip_invalid": "true"},
+        ),
+    ]
+
+
 def test_client_reads_dotenv_from_cwd(tmp_path: Path, monkeypatch: Any) -> None:
     monkeypatch.delenv("CMC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
@@ -104,7 +220,36 @@ class RecordingCmcClient(CmcClient):
 
     def _get(self, path: str, params: dict[str, str]) -> dict[str, Any]:
         self.calls.append((path, params))
-        return {"status": {"error_code": 0}, "data": {}}
+        symbol = params.get("symbol", "")
+        return {
+            "status": {"error_code": 0},
+            "data": {
+                symbol: {
+                    "symbol": symbol,
+                    "quote": {
+                        "USD": {
+                            "price": 1,
+                            "volume_24h": 1,
+                            "market_cap": 1,
+                        }
+                    },
+                }
+            },
+        }
+
+
+class FakeResponse:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self.payload).encode("utf-8")
 
 
 def _payload(symbol: str) -> dict[str, Any]:

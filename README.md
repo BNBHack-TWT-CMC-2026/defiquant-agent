@@ -38,6 +38,18 @@ When `--fixture` is omitted, the CLI requests daily CMC OHLCV candles for the co
 universe. By default it ends at the last complete UTC day; use `--cmc-end-date YYYY-MM-DD`
 for reproducible submission evidence.
 
+Scan current CMC quotes for the Track 1 alpha mode decision:
+
+```powershell
+uv run defiquant scan-alpha --symbols-source tradable --top 10
+uv run defiquant scan-alpha --symbols-source eligible --top 15
+```
+
+The tradable scan is read-only and recommends `aggressive`, `balanced`, or
+`defensive` live parameters. The broad eligible scan is discovery-only; new
+symbols are not executable until their BSC token address is verified and added
+to `configs/token_addresses.bsc.json`.
+
 Dry-run a TWAK execution plan:
 
 ```powershell
@@ -70,6 +82,7 @@ uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter 
 ## Architecture
 
 - `src/defiquant/strategy.py`: shared alpha model.
+- `src/defiquant/alpha.py`: CMC latest-quote alpha scanner and mode selector.
 - `src/defiquant/risk.py`: guardrails for max drawdown, concentration, turnover, and cash.
 - `src/defiquant/backtest.py`: deterministic daily rebalance simulator.
 - `src/defiquant/competition.py`: hackathon allowlist and qualification guardrails.
@@ -164,9 +177,11 @@ MCP templates:
 - `configs/cmc_agent_context.json`: read-only CMC Agent Hub prompt template and spend guardrails.
 - `configs/bnb_agent_identity.json`: BNB Agent SDK identity dry-run and live guardrails.
 - `configs/risk_tuning.json`: CMC-backed risk tuning candidate presets.
+- `configs/alpha_modes.json`: Track 1 mode-switch thresholds and risk parameters.
 
 Track 1 operations:
 
+- `docs/alpha_competition_loop.md`: read-only alpha mode decision loop.
 - `docs/prefunding_readiness.md`: safe checks before wallet funding.
 - `docs/track1_registration.md`: registration preflight and evidence capture.
 - `docs/track1_live_operations.md`: live-window operating loop and halt criteria.

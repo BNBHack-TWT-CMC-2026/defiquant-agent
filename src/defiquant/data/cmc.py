@@ -21,11 +21,16 @@ class CmcClient:
         if not self.api_key:
             raise ValueError("CMC_API_KEY is required")
 
-    def get_latest_quotes(self, symbols: tuple[str, ...]) -> dict[str, Any]:
-        return self._get(
-            "/v3/cryptocurrency/quotes/latest",
-            {"symbol": ",".join(symbols), "convert": "USD"},
-        )
+    def get_latest_quotes(
+        self,
+        symbols: tuple[str, ...],
+        *,
+        skip_invalid: bool = False,
+    ) -> dict[str, Any]:
+        params = {"symbol": ",".join(symbols), "convert": "USD"}
+        if skip_invalid:
+            params["skip_invalid"] = "true"
+        return self._get("/v3/cryptocurrency/quotes/latest", params)
 
     def get_historical_ohlcv(
         self,
@@ -56,7 +61,7 @@ class CmcClient:
             payload = json.loads(response.read().decode("utf-8"))
 
         status = payload.get("status", {})
-        error_code = status.get("error_code", 0)
+        error_code = _error_code(status.get("error_code", 0))
         if error_code:
             message = status.get("error_message") or "CoinMarketCap API request failed"
             raise RuntimeError(f"CMC API error {error_code}: {message}")
@@ -90,6 +95,26 @@ def load_cmc_market(
     return market
 
 
+def load_cmc_latest_quotes(
+    symbols: tuple[str, ...],
+    *,
+    client: CmcClient | None = None,
+    batch_size: int = 40,
+) -> dict[str, dict[str, Any]]:
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1")
+
+    cmc = client or CmcClient()
+    quotes: dict[str, dict[str, Any]] = {}
+    for index in range(0, len(symbols), batch_size):
+        batch = symbols[index : index + batch_size]
+        if not batch:
+            continue
+        payload = cmc.get_latest_quotes(batch, skip_invalid=True)
+        quotes.update(parse_latest_quotes(payload, requested_symbols=batch))
+    return quotes
+
+
 def parse_ohlcv(symbol: str, payload: dict[str, Any]) -> MarketData:
     rows = _extract_ohlcv_rows(symbol, payload)
     candles: list[Candle] = []
@@ -108,6 +133,39 @@ def parse_ohlcv(symbol: str, payload: dict[str, Any]) -> MarketData:
             )
         )
     return {symbol: sorted(candles, key=lambda candle: candle.timestamp)}
+
+
+def parse_latest_quotes(
+    payload: dict[str, Any],
+    *,
+    requested_symbols: tuple[str, ...] = (),
+) -> dict[str, dict[str, Any]]:
+    rows = _extract_latest_quote_rows(payload)
+    requested = {symbol.upper() for symbol in requested_symbols}
+    parsed: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        symbol = str(row.get("symbol", "")).upper()
+        if not symbol or (requested and symbol not in requested):
+            continue
+        quote = _latest_usd_quote(row.get("quote"))
+        platform_payload = row.get("platform")
+        platform = platform_payload if isinstance(platform_payload, dict) else {}
+        candidate = {
+            "symbol": symbol,
+            "name": row.get("name", ""),
+            "price": _optional_float(quote.get("price")),
+            "volume_24h": _optional_float(quote.get("volume_24h")),
+            "market_cap": _optional_float(quote.get("market_cap")),
+            "percent_change_1h": _optional_float(quote.get("percent_change_1h")),
+            "percent_change_24h": _optional_float(quote.get("percent_change_24h")),
+            "percent_change_7d": _optional_float(quote.get("percent_change_7d")),
+            "platform_name": platform.get("name", ""),
+            "platform_symbol": platform.get("symbol", ""),
+            "token_address": platform.get("token_address", ""),
+        }
+        if _latest_quote_rank(candidate) >= _latest_quote_rank(parsed.get(symbol, {})):
+            parsed[symbol] = candidate
+    return parsed
 
 
 def _extract_ohlcv_rows(symbol: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -130,6 +188,44 @@ def _extract_ohlcv_rows(symbol: str, payload: dict[str, Any]) -> list[dict[str, 
         if rows:
             return rows
     return []
+
+
+def _extract_latest_quote_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    data = payload.get("data", {})
+    if isinstance(data, list):
+        return [row for row in data if isinstance(row, dict)]
+    if not isinstance(data, dict):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for value in data.values():
+        if isinstance(value, dict):
+            rows.append(value)
+        elif isinstance(value, list):
+            rows.extend(row for row in value if isinstance(row, dict))
+    return rows
+
+
+def _latest_usd_quote(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        quote = value.get("USD", {})
+        return quote if isinstance(quote, dict) else {}
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict) and item.get("symbol") == "USD":
+                return item
+    return {}
+
+
+def _latest_quote_rank(row: dict[str, Any]) -> tuple[int, float, float]:
+    price = row.get("price")
+    market_cap = row.get("market_cap")
+    volume_24h = row.get("volume_24h")
+    return (
+        1 if price is not None else 0,
+        float(market_cap) if market_cap is not None else 0.0,
+        float(volume_24h) if volume_24h is not None else 0.0,
+    )
 
 
 def _rows_from_asset_payload(value: Any, symbol: str | None = None) -> list[dict[str, Any]]:
@@ -162,3 +258,9 @@ def _optional_float(value: Any) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _error_code(value: Any) -> int:
+    if value in (None, ""):
+        return 0
+    return int(value)

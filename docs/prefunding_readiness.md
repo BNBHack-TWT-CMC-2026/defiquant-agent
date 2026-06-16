@@ -51,6 +51,30 @@ Observed validation on `2026-06-15` KST with CMC candles ending `2026-06-14`:
 - qualified trade days: `61`
 - latest signal: `PENDLE 0.07`, `CAKE 0.07`, `LINK 0.07`, `USDT 0.79`
 
+## CMC Alpha Mode Scan
+
+Before any live decision, scan CMC latest quotes for the tradable universe:
+
+```powershell
+uv run defiquant scan-alpha --symbols-source tradable --top 10
+```
+
+Use the result to choose one of:
+
+- `configs/strategy.aggressive.json`
+- `configs/strategy.balanced.json`
+- `configs/strategy.defensive.json`
+
+The command is read-only. A broader discovery scan is allowed before funding,
+but it does not make a token executable:
+
+```powershell
+uv run defiquant scan-alpha --symbols-source eligible --top 15
+```
+
+Any newly discovered token must have a reviewed BSC contract address in
+`configs/token_addresses.bsc.json` before TWAK can plan swaps for it.
+
 ## Agent Endpoint Payloads
 
 Prepare the payloads that a hosted agent endpoint should serve:
