@@ -60,6 +60,7 @@ Run the read-only alpha decision first:
 
 ```powershell
 uv run defiquant research-report --windows 90,180,365
+uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 10
 uv run defiquant scan-alpha --symbols-source tradable --top 10
 uv run defiquant alpha-evidence --mode auto --top 10
 uv run defiquant submission-evidence --agent-url https://example.com --wallet-address 0x...
@@ -107,15 +108,17 @@ During `2026-06-22T00:00:00Z` to `2026-06-28T23:59:59Z`:
 
 1. Run read-only preflight.
 2. Run `research-report` and record the robust baseline mode.
-3. Run `scan-alpha` and record the latest quote alpha mode.
-4. Run `alpha-evidence --mode auto` and save the latest quote alpha packet.
-5. Run `submission-evidence` and save the generated manifest.
-6. Run CMC-backed dry-run execution planning with the selected mode config.
-7. Run TWAK quote validation in dry-run mode.
-8. Check the planned order count and total notional.
-9. If live execution is needed, stop for approval if the cap or command differs
+3. Run `alpha-lab` and record whether any candidate beats the baseline across
+   the same windows.
+4. Run `scan-alpha` and record the latest quote alpha mode.
+5. Run `alpha-evidence --mode auto` and save the latest quote alpha packet.
+6. Run `submission-evidence` and save the generated manifest.
+7. Run CMC-backed dry-run execution planning with the selected mode config.
+8. Run TWAK quote validation in dry-run mode.
+9. Check the planned order count and total notional.
+10. If live execution is needed, stop for approval if the cap or command differs
    from the current approved run.
-10. Capture tx hash, command output, UTC/KST timestamp, and daily notes.
+11. Capture tx hash, command output, UTC/KST timestamp, and daily notes.
 
 ## Halt Criteria
 
@@ -146,6 +149,7 @@ artifacts/track1-live/
   2026-06-22/
     preflight.json
     research-report.json
+    alpha-lab.json
     alpha-evidence.json
     submission-evidence-manifest.json
     dry-run-plan.json

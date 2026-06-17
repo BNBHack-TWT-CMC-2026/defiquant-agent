@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from defiquant.competition import load_eligible_symbols, validate_universe
+
+
+@dataclass(frozen=True)
+class AlphaWeights:
+    medium_momentum: float = 0.50
+    trend_strength: float = 0.30
+    volume_impulse: float = 0.005
+    liquidity_depth: float = 0.20
+    short_reversal_guard: float = 0.005
+    volatility_penalty: float = 1.55
 
 
 @dataclass(frozen=True)
@@ -16,6 +26,7 @@ class StrategyConfig:
     top_n: int
     min_score: float
     stable_symbol: str
+    alpha_weights: AlphaWeights = field(default_factory=AlphaWeights)
 
 
 @dataclass(frozen=True)
@@ -67,8 +78,14 @@ def load_config(path: str | Path) -> AppConfig:
     stable_symbol = raw["strategy"]["stable_symbol"]
     validate_universe((stable_symbol,), eligible_symbols, label="stable_symbol")
 
+    strategy_raw = dict(raw["strategy"])
+    alpha_weights_raw = strategy_raw.pop("alpha_weights", {})
+
     return AppConfig(
-        strategy=StrategyConfig(**raw["strategy"]),
+        strategy=StrategyConfig(
+            **strategy_raw,
+            alpha_weights=AlphaWeights(**alpha_weights_raw),
+        ),
         risk=RiskConfig(**raw["risk"]),
         backtest=BacktestConfig(**raw["backtest"]),
         competition=CompetitionConfig(
