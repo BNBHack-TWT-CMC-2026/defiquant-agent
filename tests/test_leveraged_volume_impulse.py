@@ -71,14 +71,14 @@ def test_csv_loader_reads_10m_candles(tmp_path) -> None:
     assert market["TEST"][0].timestamp.tzinfo is not None
 
 
-def test_config_default_leverage_is_70x(tmp_path) -> None:
+def test_config_default_leverage_is_80x(tmp_path) -> None:
     path = tmp_path / "strategy.json"
     path.write_text('{"seed": 1000}', encoding="utf-8")
 
     config = load_leveraged_volume_config(path)
 
-    assert LeveragedVolumeImpulseConfig().leverage == 70.0
-    assert config.leverage == 70.0
+    assert LeveragedVolumeImpulseConfig().leverage == 80.0
+    assert config.leverage == 80.0
 
 
 def test_default_sweep_runs_100_cases_and_sorts_by_score() -> None:
@@ -98,11 +98,11 @@ def test_custom_sweep_grid_is_reproducible() -> None:
         LeveragedVolumeImpulseConfig(seed=1000),
         baseline_windows=(12,),
         volume_spike_multiples=(10.0,),
-        leverages=(20.0, 70.0),
+        leverages=(20.0, 80.0),
         exit_volume_decreases=(3,),
     )
 
-    assert [result.leverage for result in results] == [70.0, 20.0]
+    assert [result.leverage for result in results] == [80.0, 20.0]
     assert all(result.baseline_window == 12 for result in results)
 
 
@@ -112,7 +112,7 @@ def test_sweep_json_includes_leverage_summary() -> None:
         LeveragedVolumeImpulseConfig(seed=1000),
         baseline_windows=(12,),
         volume_spike_multiples=(10.0,),
-        leverages=(20.0, 70.0),
+        leverages=(20.0, 80.0),
         exit_volume_decreases=(3,),
     )
 

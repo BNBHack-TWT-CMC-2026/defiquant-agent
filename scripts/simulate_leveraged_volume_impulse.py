@@ -22,7 +22,7 @@ def main() -> None:
     parser.add_argument("--fixture", action="store_true")
     parser.add_argument("--baseline-windows", default="6,9,12,15,18")
     parser.add_argument("--volume-spikes", default="5,8,10,12,15")
-    parser.add_argument("--leverages", default="20,30,50,70")
+    parser.add_argument("--leverages", default="20,30,50,80")
     parser.add_argument("--exit-decreases", default="3")
     parser.add_argument("--top", type=int, default=10)
     args = parser.parse_args()
