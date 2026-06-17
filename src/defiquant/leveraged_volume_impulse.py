@@ -26,7 +26,7 @@ class TenMinuteCandle:
 @dataclass(frozen=True)
 class LeveragedVolumeImpulseConfig:
     seed: float = 1000.0
-    leverage: float = 70.0
+    leverage: float = 80.0
     baseline_window: int = 12
     volume_spike_multiple: float = 10.0
     exit_volume_decreases: int = 3
@@ -105,7 +105,7 @@ def load_leveraged_volume_config(path: str | Path) -> LeveragedVolumeImpulseConf
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
     return LeveragedVolumeImpulseConfig(
         seed=float(raw.get("seed", 1000.0)),
-        leverage=float(raw.get("leverage", 70.0)),
+        leverage=float(raw.get("leverage", 80.0)),
         baseline_window=int(raw.get("baseline_window", 12)),
         volume_spike_multiple=float(raw.get("volume_spike_multiple", 10.0)),
         exit_volume_decreases=int(raw.get("exit_volume_decreases", 3)),
@@ -341,7 +341,7 @@ def run_leveraged_volume_sweep(
     *,
     baseline_windows: Sequence[int] = (6, 9, 12, 15, 18),
     volume_spike_multiples: Sequence[float] = (5.0, 8.0, 10.0, 12.0, 15.0),
-    leverages: Sequence[float] = (20.0, 30.0, 50.0, 70.0),
+    leverages: Sequence[float] = (20.0, 30.0, 50.0, 80.0),
     exit_volume_decreases: Sequence[int] = (3,),
 ) -> tuple[LeveragedSweepResult, ...]:
     results: list[LeveragedSweepResult] = []
