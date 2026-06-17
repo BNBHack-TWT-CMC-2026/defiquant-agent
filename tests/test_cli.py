@@ -187,6 +187,26 @@ def test_execute_twak_can_plan_from_latest_quote_alpha(
     assert fake.portfolio_reads == 0
 
 
+def test_execute_twak_ohlcv_preserves_adapter_token_address_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeTwakAdapter
+    fake.instances = []
+    fake.orders = []
+    monkeypatch.setattr("defiquant.cli.TwakCliExecutionAdapter", fake)
+    monkeypatch.setenv("TWAK_TOKEN_ADDRESSES_PATH", "configs/custom-addresses.json")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "execute", "--fixture", "--adapter", "twak"],
+    )
+
+    main()
+
+    assert fake.instances[-1].token_addresses is None
+    assert fake.instances[-1].token_addresses_path is None
+
+
 def test_execute_twak_can_validate_quotes(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -360,6 +380,8 @@ class FakeTwakAdapter:
         self.chain = "bsc"
         self.dry_run = bool(kwargs.get("dry_run", True))
         self.quote_only = kwargs.get("quote_only")
+        self.token_addresses = kwargs.get("token_addresses")
+        self.token_addresses_path = kwargs.get("token_addresses_path")
         type(self).instances.append(self)
 
     def register_competition(self) -> str:

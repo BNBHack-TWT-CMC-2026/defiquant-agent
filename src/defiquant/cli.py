@@ -23,6 +23,7 @@ from defiquant.cmc_agent_context import build_cmc_agent_context_packet
 from defiquant.config import AppConfig, load_config, to_jsonable
 from defiquant.data.cmc import DEFAULT_CMC_HISTORY_DAYS, load_cmc_latest_quotes, load_cmc_market
 from defiquant.data.fixtures import fixture_market
+from defiquant.env import env_value
 from defiquant.execution.paper import PaperExecutionAdapter
 from defiquant.execution.twak_cli import TwakCliExecutionAdapter
 from defiquant.execution.twak_portfolio import parse_twak_portfolio
@@ -33,6 +34,7 @@ from defiquant.tuning import load_risk_tuning_candidates, rank_risk_candidates
 
 LIVE_CONFIRMATION_PHRASE = "I_UNDERSTAND_TWAK_LIVE_SWAP_RISK"
 BNB_AGENT_REGISTRATION_CONFIRMATION_PHRASE = "I_UNDERSTAND_BNB_AGENT_REGISTRATION_RISK"
+DEFAULT_TOKEN_ADDRESSES_PATH = "configs/token_addresses.bsc.json"
 
 
 def main() -> None:
@@ -285,13 +287,14 @@ def main() -> None:
         print(json.dumps(to_jsonable(result), indent=2))
         return
 
+    latest_token_addresses: dict[str, str] | None = None
     if args.alpha_source == "latest":
-        token_addresses = load_token_addresses(Path(args.token_addresses))
-        symbols = _latest_signal_symbols(config, token_addresses)
+        latest_token_addresses = load_token_addresses(Path(_token_addresses_path(args)))
+        symbols = _latest_signal_symbols(config, latest_token_addresses)
         quotes = load_cmc_latest_quotes(symbols)
         raw_signals = latest_quote_signals(
             quotes,
-            token_addresses=token_addresses,
+            token_addresses=latest_token_addresses,
             config=config.strategy,
         )
         prices = latest_quote_prices(quotes, stable_symbol=config.strategy.stable_symbol)
@@ -321,7 +324,8 @@ def main() -> None:
             dry_run=args.dry_run,
             stable_symbol=config.strategy.stable_symbol,
             quote_only=args.dry_run,
-            token_addresses=load_token_addresses(Path(args.token_addresses)),
+            token_addresses=latest_token_addresses,
+            token_addresses_path=args.token_addresses,
         )
         if not args.dry_run:
             _validate_twak_live_preflight(args, orders)
@@ -404,8 +408,11 @@ def _add_alpha_source_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--token-addresses",
-        default="configs/token_addresses.bsc.json",
-        help="BSC token address map used by latest quote alpha and TWAK execution.",
+        default=None,
+        help=(
+            "Token address map used by latest quote alpha and TWAK execution. "
+            f"Defaults to TWAK_TOKEN_ADDRESSES_PATH or {DEFAULT_TOKEN_ADDRESSES_PATH}."
+        ),
     )
 
 
@@ -452,6 +459,13 @@ def _latest_signal_symbols(
         symbol
         for symbol in config.universe_symbols
         if symbol == config.strategy.stable_symbol or symbol.upper() in token_addresses
+    )
+
+
+def _token_addresses_path(args: argparse.Namespace) -> str:
+    return args.token_addresses or env_value(
+        "TWAK_TOKEN_ADDRESSES_PATH",
+        DEFAULT_TOKEN_ADDRESSES_PATH,
     )
 
 
