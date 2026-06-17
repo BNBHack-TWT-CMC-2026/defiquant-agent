@@ -74,7 +74,15 @@ def test_alpha_lab_report_ranks_candidates_on_fixture() -> None:
         "most_robust",
     }
     assert "average_total_return" in report["frontiers"]["best_average_return"]
-    assert "robustness_score" in report["frontiers"]["most_robust"]
+    most_robust = report["frontiers"]["most_robust"]
+    expected_robustness_score = round(
+        most_robust["minimum_risk_adjusted_score"]
+        + most_robust["minimum_total_return"]
+        - (0.25 * most_robust["risk_adjusted_score_range"])
+        - (0.50 * most_robust["worst_max_drawdown"]),
+        8,
+    )
+    assert most_robust["robustness_score"] == expected_robustness_score
     assert len(report["top_candidates"]) == 5
     assert all("alpha_weights" in item for item in report["top_candidates"])
     assert all("promotable" in item for item in report["top_candidates"])
