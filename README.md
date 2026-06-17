@@ -32,6 +32,7 @@ Run the same flow with live CoinMarketCap OHLCV data:
 $env:CMC_API_KEY="your-cmc-api-key"
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
+uv run defiquant research-report --windows 90,180,365
 ```
 
 When `--fixture` is omitted, the CLI requests daily CMC OHLCV candles for the configured
@@ -71,6 +72,7 @@ Before funding the Track 1 wallet, run the safe readiness loop:
 
 ```powershell
 uv run defiquant tune-risk --config configs/strategy.json --candidates configs/risk_tuning.json --cmc-days 90 --top 5
+uv run defiquant research-report --windows 90,180,365
 uv run defiquant agent-endpoints --config configs/strategy.json --agent-url https://example.com --wallet-address 0x... --network bsc-testnet
 uv run defiquant track1-preflight --run-read-only
 uv run defiquant alpha-evidence --mode auto --portfolio-cash 1000
@@ -90,6 +92,7 @@ uv run defiquant execute --config configs/strategy.aggressive.json --alpha-sourc
 - `src/defiquant/alpha.py`: CMC latest-quote alpha scanner, mode selector, and live-window signal source.
 - `src/defiquant/risk.py`: guardrails for max drawdown, concentration, turnover, and cash.
 - `src/defiquant/backtest.py`: deterministic daily rebalance simulator.
+- `src/defiquant/research.py`: multi-window mode comparison and deployment recommendation.
 - `src/defiquant/competition.py`: hackathon allowlist and qualification guardrails.
 - `src/defiquant/data/cmc.py`: CMC API client and response parser.
 - `src/defiquant/execution/`: paper and TWAK CLI execution adapters.

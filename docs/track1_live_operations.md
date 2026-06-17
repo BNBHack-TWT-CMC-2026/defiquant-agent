@@ -59,6 +59,7 @@ uv run defiquant execute --config configs/strategy.json --alpha-source latest --
 Run the read-only alpha decision first:
 
 ```powershell
+uv run defiquant research-report --windows 90,180,365
 uv run defiquant scan-alpha --symbols-source tradable --top 10
 uv run defiquant alpha-evidence --mode auto --top 10
 ```
@@ -104,14 +105,15 @@ Choose the cap from `configs/live_operations.json`:
 During `2026-06-22T00:00:00Z` to `2026-06-28T23:59:59Z`:
 
 1. Run read-only preflight.
-2. Run `scan-alpha` and record the recommended mode.
-3. Run `alpha-evidence --mode auto` and save the latest quote alpha packet.
-4. Run CMC-backed dry-run execution planning with the selected mode config.
-5. Run TWAK quote validation in dry-run mode.
-6. Check the planned order count and total notional.
-7. If live execution is needed, stop for approval if the cap or command differs
+2. Run `research-report` and record the robust baseline mode.
+3. Run `scan-alpha` and record the latest quote alpha mode.
+4. Run `alpha-evidence --mode auto` and save the latest quote alpha packet.
+5. Run CMC-backed dry-run execution planning with the selected mode config.
+6. Run TWAK quote validation in dry-run mode.
+7. Check the planned order count and total notional.
+8. If live execution is needed, stop for approval if the cap or command differs
    from the current approved run.
-8. Capture tx hash, command output, UTC/KST timestamp, and daily notes.
+9. Capture tx hash, command output, UTC/KST timestamp, and daily notes.
 
 ## Halt Criteria
 
@@ -120,6 +122,8 @@ Stop live activity when any condition is true:
 - TWAK auth, wallet address, or wallet portfolio check fails.
 - CMC data loading fails or uses stale candles.
 - Alpha mode selection cannot be reproduced from saved scan output.
+- Research report recommends a safer baseline mode and there is no explicit
+  reason to override it.
 - Quote validation fails for any planned order.
 - Planned order or batch exceeds the approved live notional cap.
 - Any symbol is outside `configs/eligible_tokens.json`.
@@ -139,6 +143,7 @@ artifacts/track1-live/
     dorahacks-submission-note.md
   2026-06-22/
     preflight.json
+    research-report.json
     alpha-evidence.json
     dry-run-plan.json
     quote-validation.json
