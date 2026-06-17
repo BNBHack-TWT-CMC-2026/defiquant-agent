@@ -25,9 +25,15 @@ Alpha pool reasons use the same names as Track 1:
 Local command:
 
 ```powershell
+uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
+uv run defiquant research-report --windows 90,180,365
+uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
 ```
+
+`frontier-evidence` and TWAK dry-run commands are Track 1 evidence paths, not
+Track 2 Skill behavior. Track 2 returns target weights only.
 
 The executable skill instructions are in [SKILL.md](SKILL.md). The JSON package
 metadata is in [skill.json](skill.json).
