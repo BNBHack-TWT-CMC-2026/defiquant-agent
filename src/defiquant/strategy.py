@@ -32,13 +32,14 @@ class MomentumLiquidityStrategy:
             liquidity_depth = log(max(1.0, _average(volumes))) / 20.0
             volume_impulse = _volume_impulse(clean, self.config.lookback_days)
             short_reversal_guard = _short_reversal_guard(prices)
+            weights = self.config.alpha_weights
             score = (
-                (0.50 * medium_momentum)
-                + (0.30 * trend_strength)
-                + (0.005 * volume_impulse)
-                + (0.20 * liquidity_depth)
-                + (0.005 * short_reversal_guard)
-                - (1.55 * vol)
+                (weights.medium_momentum * medium_momentum)
+                + (weights.trend_strength * trend_strength)
+                + (weights.volume_impulse * volume_impulse)
+                + (weights.liquidity_depth * liquidity_depth)
+                + (weights.short_reversal_guard * short_reversal_guard)
+                - (weights.volatility_penalty * vol)
             )
             reasons = (
                 f"medium_momentum={medium_momentum:.4f}",

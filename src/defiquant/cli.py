@@ -23,6 +23,7 @@ from defiquant.alpha_evidence import (
     build_alpha_evidence,
     choose_alpha_evidence_mode,
 )
+from defiquant.alpha_lab import build_alpha_lab_report
 from defiquant.backtest import Backtester
 from defiquant.bnb_agent import preview_bnb_registration, register_bnb_agent
 from defiquant.cmc_agent_context import build_cmc_agent_context_packet
@@ -78,6 +79,17 @@ def main() -> None:
     )
     research_report.add_argument("--fixture", action="store_true")
     research_report.add_argument(
+        "--cmc-end-date",
+        help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
+    )
+
+    alpha_lab = subparsers.add_parser("alpha-lab")
+    alpha_lab.add_argument("--config", default="configs/strategy.defensive.json")
+    alpha_lab.add_argument("--windows", default="90,180,365")
+    alpha_lab.add_argument("--max-candidates", type=int, default=1000)
+    alpha_lab.add_argument("--top", type=int, default=10)
+    alpha_lab.add_argument("--fixture", action="store_true")
+    alpha_lab.add_argument(
         "--cmc-end-date",
         help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
     )
@@ -233,6 +245,29 @@ def main() -> None:
         return
 
     config = load_config(Path(args.config))
+
+    if args.command == "alpha-lab":
+        markets = {
+            days: _load_market(
+                args.fixture,
+                config.universe_symbols,
+                cmc_days=days,
+                cmc_end_date=args.cmc_end_date,
+            )
+            for days in _positive_ints(args.windows, label="--windows")
+        }
+        print(
+            json.dumps(
+                build_alpha_lab_report(
+                    config,
+                    markets,
+                    max_candidates=args.max_candidates,
+                    top=args.top,
+                ),
+                indent=2,
+            )
+        )
+        return
 
     if args.command == "track1-preflight":
         print(json.dumps(to_jsonable(_track1_preflight(args, config)), indent=2))
