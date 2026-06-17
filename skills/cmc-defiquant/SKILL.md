@@ -34,6 +34,7 @@ without executing trades.
 uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
+uv run defiquant research-report --windows 90,180,365
 ```
 
 Use fixture mode for deterministic package review. Use CMC mode only when
@@ -67,4 +68,5 @@ adapter after the risk manager has produced a separate order plan.
 
 The package includes deterministic examples in `examples/` and submission notes
 in `SUBMISSION.md`. These files are part of the Track 2 bundle and must remain
-free of secrets, wallet commands, and live execution instructions.
+free of secrets, wallet commands, live execution instructions, registration
+steps, and funding instructions.
