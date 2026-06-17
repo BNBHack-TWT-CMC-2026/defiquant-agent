@@ -40,6 +40,7 @@ from defiquant.research import build_research_report, validate_research_config_c
 from defiquant.risk import RiskManager
 from defiquant.strategy import MomentumLiquidityStrategy
 from defiquant.submission_evidence import write_submission_evidence_bundle
+from defiquant.track2_regime import build_track2_regime_spec
 from defiquant.tuning import load_risk_tuning_candidates, rank_risk_candidates
 
 LIVE_CONFIRMATION_PHRASE = "I_UNDERSTAND_TWAK_LIVE_SWAP_RISK"
@@ -57,6 +58,10 @@ def main() -> None:
     signal = subparsers.add_parser("signal")
     _add_market_args(signal)
     _add_alpha_source_args(signal)
+
+    track2_regime_spec = subparsers.add_parser("track2-regime-spec")
+    _add_market_args(track2_regime_spec)
+    track2_regime_spec.add_argument("--top", type=int, default=10)
 
     tune_risk = subparsers.add_parser("tune-risk")
     _add_market_args(tune_risk)
@@ -292,6 +297,16 @@ def main() -> None:
 
     if args.command == "track1-preflight":
         print(json.dumps(to_jsonable(_track1_preflight(args, config)), indent=2))
+        return
+
+    if args.command == "track2-regime-spec":
+        market = _load_market(
+            args.fixture,
+            config.universe_symbols,
+            cmc_days=args.cmc_days,
+            cmc_end_date=args.cmc_end_date,
+        )
+        print(json.dumps(build_track2_regime_spec(config, market, top=args.top), indent=2))
         return
 
     if args.command == "profile":

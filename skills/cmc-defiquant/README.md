@@ -11,7 +11,9 @@ Expected behavior:
 1. Accept an eligible CMC token universe and historical OHLCV data.
 2. Run the shared alpha pool strategy scoring.
 3. Return target weights, rationale, and risk flags.
-4. Never execute trades in Track 2 mode.
+4. Optionally return a non-executing regime strategy spec that splits coins into
+   up-channel long-bias, down-channel short-bias, and neutral/transition lanes.
+5. Never execute trades in Track 2 mode.
 
 Alpha pool reasons use the same names as Track 1:
 
@@ -22,11 +24,25 @@ Alpha pool reasons use the same names as Track 1:
 - `short_reversal_guard`
 - `volatility`
 
+Regime strategy reasons add:
+
+- `support_line`
+- `support_distance`
+- `support_break`
+- `trend_angle`
+- `supertrend_alignment`
+- `cloud_bias`
+- `volume_impulse`
+- `long_score`
+- `short_score`
+
 Local command:
 
 ```powershell
 uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
+uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
+uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
@@ -43,3 +59,5 @@ Submission support files:
 - [SUBMISSION.md](SUBMISSION.md): Track 2 packaging notes and non-execution proof.
 - [examples/input.fixture.json](examples/input.fixture.json): deterministic sample input.
 - [examples/output.fixture.json](examples/output.fixture.json): deterministic target-weight output.
+- [examples/regime-output.fixture.json](examples/regime-output.fixture.json): deterministic
+  regime strategy spec output.

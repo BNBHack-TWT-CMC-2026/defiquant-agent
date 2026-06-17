@@ -16,6 +16,7 @@ def test_cmc_skill_manifest_points_to_examples() -> None:
     assert manifest["examples"] == {
         "input": "examples/input.fixture.json",
         "output": "examples/output.fixture.json",
+        "regime_output": "examples/regime-output.fixture.json",
     }
     assert manifest["safety"] == {
         "execution": "disabled",
@@ -60,6 +61,32 @@ def test_cmc_skill_fixture_output_uses_alpha_pool_reasons() -> None:
     for item in non_stable:
         reason_keys = {reason.split("=", maxsplit=1)[0] for reason in item["reasons"]}
         assert reason_keys == expected_keys
+
+
+def test_cmc_skill_regime_output_uses_regime_reason_keys() -> None:
+    output = json.loads((SKILL_DIR / "examples" / "regime-output.fixture.json").read_text())
+
+    assert output["execution"] == "disabled"
+    assert [lane["name"] for lane in output["strategy_lanes"]] == [
+        "up_channel_long_bias",
+        "down_channel_short_bias",
+    ]
+    assert output["signals"]
+    expected_reason_keys = {
+        "support_line",
+        "support_distance",
+        "support_break",
+        "trend_angle",
+        "supertrend_alignment",
+        "cloud_bias",
+        "volume_impulse",
+        "long_score",
+        "short_score",
+    }
+    for item in output["signals"]:
+        assert item["directional_bias"] in {"long", "short", "neutral"}
+        reason_keys = {reason.split("=", maxsplit=1)[0] for reason in item["reasons"]}
+        assert reason_keys == expected_reason_keys
 
 
 def test_cmc_skill_package_has_no_execution_instructions() -> None:

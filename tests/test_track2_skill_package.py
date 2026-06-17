@@ -26,6 +26,7 @@ def test_track2_skill_metadata_is_non_executing() -> None:
         "private_key_access": "none",
         "mutation": "read-only analysis",
     }
+    assert metadata["examples"]["regime_output"] == "examples/regime-output.fixture.json"
 
 
 def test_track2_fixture_input_matches_strategy_config() -> None:
@@ -68,6 +69,35 @@ def test_track2_fixture_output_matches_cli(
     main()
 
     expected = json.loads((SKILL_DIR / "examples/output.fixture.json").read_text(encoding="utf-8"))
+    actual = json.loads(capsys.readouterr().out)
+    assert actual == expected
+
+
+def test_track2_regime_fixture_output_matches_cli(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from defiquant.cli import main
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "defiquant",
+            "track2-regime-spec",
+            "--fixture",
+            "--config",
+            "configs/strategy.json",
+            "--top",
+            "5",
+        ],
+    )
+
+    main()
+
+    expected = json.loads(
+        (SKILL_DIR / "examples/regime-output.fixture.json").read_text(encoding="utf-8")
+    )
     actual = json.loads(capsys.readouterr().out)
     assert actual == expected
 

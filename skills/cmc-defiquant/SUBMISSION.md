@@ -11,6 +11,8 @@ Included files:
 - `README.md`: package overview.
 - `examples/input.fixture.json`: deterministic review input.
 - `examples/output.fixture.json`: deterministic target-weight output.
+- `examples/regime-output.fixture.json`: deterministic up-channel/down-channel
+  regime strategy spec output.
 
 ## Purpose
 
@@ -29,6 +31,17 @@ It reuses the same alpha pool as Track 1:
 - `supertrend_alignment`
 - `volatility`
 
+It also includes a Track 2-only non-executing regime spec:
+
+- `up_channel_long_bias`: support holds, trend angle is positive, Supertrend is
+  positive, price is above the Ichimoku-lite cloud, and volume confirms
+  participation.
+- `down_channel_short_bias`: support breaks or fails to reclaim, trend angle is
+  negative, Supertrend is negative or cloud is bearish, and volume confirms
+  distribution.
+- `range_or_transition`: factors disagree, so the skill records the regime and
+  does not express a directional preference.
+
 ## Non-Execution Proof
 
 This package does not include:
@@ -45,6 +58,8 @@ The only local commands documented for this package are:
 ```powershell
 uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
+uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
+uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
@@ -63,5 +78,7 @@ live swaps are intentionally excluded from the Track 2 Skill package.
 - Run fixture signal and compare the shape to `examples/output.fixture.json`.
 - Confirm `examples/input.fixture.json` matches `configs/strategy.json`.
 - Confirm each non-stable fixture output includes the alpha pool reason keys.
+- Confirm `examples/regime-output.fixture.json` includes both regime lanes and
+  reason keys for support, trend angle, Supertrend, cloud, and volume.
 - Confirm `SKILL.md` contains no wallet mutation instructions.
 - Confirm `.env` and API keys are not included.

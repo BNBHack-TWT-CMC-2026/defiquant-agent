@@ -1,10 +1,18 @@
 {
   "name": "defiquant-alpha-pool-risk",
   "version": "0.1.0",
-  "description": "CMC-driven BNB Chain alpha pool strategy with drawdown-aware risk controls.",
+  "description": "CMC-driven BNB Chain alpha pool strategy with regime-aware long/short research lanes and drawdown-aware risk controls.",
   "track": "coinmarketcap-skill",
   "license": "MIT",
-  "tags": ["coinmarketcap", "bnb-chain", "strategy", "risk", "non-executing"],
+  "tags": [
+    "coinmarketcap",
+    "bnb-chain",
+    "strategy",
+    "regime",
+    "long-short-research",
+    "risk",
+    "non-executing"
+  ],
   "entrypoint": {
     "command": "python",
     "args": ["-m", "defiquant.cli", "signal", "--config", "configs/strategy.json"]
@@ -15,12 +23,14 @@
   },
   "outputs": {
     "signals": "Target weights with score rationale",
+    "regime_strategy": "Non-executing up-channel long-bias and down-channel short-bias strategy spec",
     "risk": "Cash reserve and drawdown guardrail state"
   },
   "execution": "disabled",
   "examples": {
     "input": "examples/input.fixture.json",
-    "output": "examples/output.fixture.json"
+    "output": "examples/output.fixture.json",
+    "regime_output": "examples/regime-output.fixture.json"
   },
   "safety": {
     "execution": "disabled",

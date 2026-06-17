@@ -22,19 +22,31 @@ without executing trades.
    - normalized trend angle,
    - Supertrend alignment,
    - volatility penalty.
-4. Apply risk guardrails:
+4. Build the non-executing Track 2 regime strategy spec:
+   - `up_channel_long_bias`: use when support holds, trend angle is positive,
+     Supertrend is positive, price is above the Ichimoku-lite cloud, and volume
+     confirms participation.
+   - `down_channel_short_bias`: use when support breaks or fails to reclaim,
+     trend angle is negative, Supertrend is negative, price is below the
+     Ichimoku-lite cloud, and volume confirms distribution.
+   - `range_or_transition`: use when the factors disagree and the skill should
+     not express a directional preference.
+5. Apply risk guardrails:
    - max drawdown circuit breaker,
    - max position weight,
    - minimum stable reserve,
    - daily turnover cap,
    - explicit fee and slippage assumptions.
-5. Return target weights with the reason tuple for each asset.
+6. Return target weights with the reason tuple for each asset, plus the optional
+   non-executing regime strategy spec when requested.
 
 ## Local Commands
 
 ```powershell
 uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
+uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
+uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 ```

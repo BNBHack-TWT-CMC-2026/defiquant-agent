@@ -1,0 +1,135 @@
+{
+  "mode": "track2_regime_strategy_spec",
+  "execution": "disabled",
+  "strategy_lanes": [
+    {
+      "name": "up_channel_long_bias",
+      "directional_bias": "long",
+      "regime_trigger": "positive trend angle with Supertrend support and price above the cloud",
+      "confirmation_factors": [
+        "support line holds as invalidation reference",
+        "trend angle remains positive",
+        "Supertrend alignment is positive",
+        "price stays above Ichimoku-lite cloud",
+        "volume impulse confirms participation"
+      ],
+      "risk_note": "Track 2 emits research rationale only; no long order is submitted."
+    },
+    {
+      "name": "down_channel_short_bias",
+      "directional_bias": "short",
+      "regime_trigger": "negative trend angle with Supertrend resistance, cloud breakdown, or support-line break",
+      "confirmation_factors": [
+        "support line is broken or fails to reclaim",
+        "trend angle remains negative",
+        "Supertrend alignment is negative",
+        "price stays below Ichimoku-lite cloud",
+        "volume impulse confirms distribution"
+      ],
+      "risk_note": "Track 2 emits research rationale only; no short order is submitted."
+    }
+  ],
+  "signals": [
+    {
+      "symbol": "CAKE",
+      "regime": "down_channel",
+      "strategy": "down_channel_short_bias",
+      "directional_bias": "short",
+      "confidence": 0.683488799608464,
+      "score": 0.5806263720684003,
+      "reasons": [
+        "support_line=11.147069",
+        "support_distance=0.0030",
+        "support_break=false",
+        "trend_angle=-0.5936",
+        "supertrend_alignment=-1.0000",
+        "cloud_bias=-1.0000",
+        "volume_impulse=0.0539",
+        "long_score=0.1029",
+        "short_score=0.6835"
+      ]
+    },
+    {
+      "symbol": "TWT",
+      "regime": "down_channel",
+      "strategy": "down_channel_short_bias",
+      "directional_bias": "short",
+      "confidence": 0.6672969419033463,
+      "score": 0.5678838548248788,
+      "reasons": [
+        "support_line=16.852306",
+        "support_distance=0.0059",
+        "support_break=false",
+        "trend_angle=-0.5431",
+        "supertrend_alignment=-1.0000",
+        "cloud_bias=-1.0000",
+        "volume_impulse=0.0437",
+        "long_score=0.0994",
+        "short_score=0.6673"
+      ]
+    },
+    {
+      "symbol": "PENDLE",
+      "regime": "range_or_transition",
+      "strategy": "neutral_observe",
+      "directional_bias": "neutral",
+      "confidence": 0.5826669479616161,
+      "score": 0.5022909505304683,
+      "reasons": [
+        "support_line=38.714900",
+        "support_distance=0.0241",
+        "support_break=false",
+        "trend_angle=-0.2586",
+        "supertrend_alignment=1.0000",
+        "cloud_bias=1.0000",
+        "volume_impulse=0.0278",
+        "long_score=0.5827",
+        "short_score=0.0804"
+      ]
+    },
+    {
+      "symbol": "AAVE",
+      "regime": "down_channel",
+      "strategy": "down_channel_short_bias",
+      "directional_bias": "short",
+      "confidence": 0.4049422195429524,
+      "score": 0.30762176333208624,
+      "reasons": [
+        "support_line=23.355875",
+        "support_distance=0.0076",
+        "support_break=false",
+        "trend_angle=-0.5042",
+        "supertrend_alignment=-1.0000",
+        "cloud_bias=0.0000",
+        "volume_impulse=0.0367",
+        "long_score=0.0973",
+        "short_score=0.4049"
+      ]
+    },
+    {
+      "symbol": "LINK",
+      "regime": "range_or_transition",
+      "strategy": "neutral_observe",
+      "directional_bias": "neutral",
+      "confidence": 0.3430852543978162,
+      "score": 0.2208121002045768,
+      "reasons": [
+        "support_line=30.666604",
+        "support_distance=0.0121",
+        "support_break=false",
+        "trend_angle=-0.3970",
+        "supertrend_alignment=1.0000",
+        "cloud_bias=0.0000",
+        "volume_impulse=0.0317",
+        "long_score=0.3431",
+        "short_score=0.1223"
+      ]
+    }
+  ],
+  "safety": {
+    "wallet_access": "none",
+    "transaction_signing": "disabled",
+    "orders": "not emitted",
+    "output_use": "strategy research and CMC Skill rationale only"
+  }
+}
