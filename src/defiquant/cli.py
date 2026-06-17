@@ -34,6 +34,7 @@ from defiquant.execution.paper import PaperExecutionAdapter
 from defiquant.execution.twak_cli import TwakCliExecutionAdapter
 from defiquant.execution.twak_portfolio import parse_twak_portfolio
 from defiquant.models import MarketData, Order, PortfolioState
+from defiquant.research import build_research_report, validate_research_config_compatibility
 from defiquant.risk import RiskManager
 from defiquant.strategy import MomentumLiquidityStrategy
 from defiquant.tuning import load_risk_tuning_candidates, rank_risk_candidates
@@ -58,6 +59,27 @@ def main() -> None:
     _add_market_args(tune_risk)
     tune_risk.add_argument("--candidates", default="configs/risk_tuning.json")
     tune_risk.add_argument("--top", type=int, default=5)
+
+    research_report = subparsers.add_parser("research-report")
+    research_report.add_argument(
+        "--configs",
+        default=(
+            "configs/strategy.aggressive.json,"
+            "configs/strategy.balanced.json,"
+            "configs/strategy.defensive.json"
+        ),
+        help="Comma-separated strategy config paths to compare.",
+    )
+    research_report.add_argument(
+        "--windows",
+        default="90,180,365",
+        help="Comma-separated CMC OHLCV window lengths in days.",
+    )
+    research_report.add_argument("--fixture", action="store_true")
+    research_report.add_argument(
+        "--cmc-end-date",
+        help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
+    )
 
     scan_alpha = subparsers.add_parser("scan-alpha")
     scan_alpha.add_argument("--config", default="configs/strategy.json")
@@ -170,6 +192,22 @@ def main() -> None:
     if args.command == "register-track1":
         adapter = TwakCliExecutionAdapter(dry_run=args.dry_run, chain=args.chain)
         print(json.dumps({"registration": adapter.register_competition()}, indent=2))
+        return
+
+    if args.command == "research-report":
+        config_paths = _config_paths(args.configs)
+        configs = {path.stem.removeprefix("strategy."): load_config(path) for path in config_paths}
+        base_config = validate_research_config_compatibility(configs)
+        markets = {
+            days: _load_market(
+                args.fixture,
+                base_config.universe_symbols,
+                cmc_days=days,
+                cmc_end_date=args.cmc_end_date,
+            )
+            for days in _positive_ints(args.windows, label="--windows")
+        }
+        print(json.dumps(build_research_report(configs, markets), indent=2))
         return
 
     config = load_config(Path(args.config))
@@ -518,6 +556,23 @@ def _latest_signal_symbols(
         for symbol in config.universe_symbols
         if symbol == config.strategy.stable_symbol or symbol.upper() in token_addresses
     )
+
+
+def _config_paths(value: str) -> tuple[Path, ...]:
+    paths = tuple(Path(item.strip()) for item in value.split(",") if item.strip())
+    if not paths:
+        raise SystemExit("--configs must include at least one path")
+    return paths
+
+
+def _positive_ints(value: str, *, label: str) -> tuple[int, ...]:
+    try:
+        items = tuple(int(item.strip()) for item in value.split(",") if item.strip())
+    except ValueError as exc:
+        raise SystemExit(f"{label} must be comma-separated positive integers") from exc
+    if not items or any(item <= 0 for item in items):
+        raise SystemExit(f"{label} must include at least one positive integer")
+    return items
 
 
 def _token_addresses_path(args: argparse.Namespace) -> str:

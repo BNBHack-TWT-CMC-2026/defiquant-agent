@@ -24,6 +24,7 @@
 - Show `scan-alpha` latest-quote mode selection and the three reviewed strategy modes.
 - Show `alpha-evidence --mode auto` packet with selected mode, target weights, and TWAK dry-run commands.
 - Show `signal --alpha-source latest` and TWAK dry-run execution from the same latest CMC quote alpha.
+- Show `research-report --windows 90,180,365` as the mode robustness evidence.
 - Show CMC Agent Hub MCP configuration from `configs/mcp/cmc-mcp.json`.
 - Show CMC Agent Hub read-only context template from `configs/cmc_agent_context.json`.
 - Show generated CMC Agent Hub prompt packet from `uv run defiquant cmc-context-packet`.
@@ -55,6 +56,7 @@
 ## Integration Must-Haves
 
 - CMC REST API for deterministic OHLCV backtests.
+- CMC REST API multi-window research report for aggressive/balanced/defensive mode selection.
 - CMC latest quotes for Track 1 alpha mode selection and live-window target weights.
 - Track 1 alpha evidence packet for current CMC quote alpha and TWAK dry-run command proof.
 - CMC MCP for agent-ready read-only market context.
