@@ -64,3 +64,21 @@ def test_cmc_context_packet_cli_outputs_json(
     assert packet["symbols"] == ["CAKE", "TWT"]
     assert packet["read_only"] is True
     assert packet["do_not_execute"] is True
+
+
+def test_cmc_context_packet_cli_rejects_symbols_outside_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from defiquant.cli import main
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "cmc-context-packet", "--symbols", "cake,notreal"],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert "must be a subset of the configured universe" in str(exc.value)
+    assert "NOTREAL" in str(exc.value)

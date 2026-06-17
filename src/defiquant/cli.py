@@ -240,12 +240,14 @@ def main() -> None:
         return
 
     if args.command == "cmc-context-packet":
+        context_symbols = _optional_symbols(args.symbols)
+        _validate_context_symbols(context_symbols, config.universe_symbols)
         print(
             json.dumps(
                 build_cmc_agent_context_packet(
                     config,
                     context_path=args.context,
-                    symbols=_optional_symbols(args.symbols),
+                    symbols=context_symbols,
                 ),
                 indent=2,
             )
@@ -405,6 +407,21 @@ def _optional_symbols(value: str) -> tuple[str, ...] | None:
         return None
     symbols = tuple(symbol.strip().upper() for symbol in value.split(",") if symbol.strip())
     return symbols or None
+
+
+def _validate_context_symbols(
+    symbols: tuple[str, ...] | None,
+    configured_universe: tuple[str, ...],
+) -> None:
+    if symbols is None:
+        return
+    allowed = set(configured_universe)
+    invalid = tuple(symbol for symbol in symbols if symbol not in allowed)
+    if invalid:
+        raise SystemExit(
+            "cmc-context-packet --symbols must be a subset of the configured universe: "
+            + ", ".join(invalid)
+        )
 
 
 def _load_portfolio(
