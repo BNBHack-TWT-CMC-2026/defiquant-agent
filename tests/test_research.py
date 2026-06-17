@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 
 import pytest
 
 from defiquant.config import load_config
 from defiquant.data.fixtures import fixture_market
-from defiquant.research import build_research_report
+from defiquant.research import build_research_report, validate_research_config_compatibility
 
 
 def test_build_research_report_ranks_multiple_configs() -> None:
@@ -25,6 +26,19 @@ def test_build_research_report_ranks_multiple_configs() -> None:
     assert len(report["window_results"]) == 4
     assert all("risk_adjusted_score" in row for row in report["window_results"])
     assert all("eligible_windows" in row for row in report["summary"])
+
+
+def test_research_config_compatibility_rejects_mismatched_universe() -> None:
+    config = load_config("configs/strategy.aggressive.json")
+    mismatched = replace(config, universe_symbols=("CAKE", "USDT"))
+
+    with pytest.raises(ValueError, match="universe differs"):
+        validate_research_config_compatibility(
+            {
+                "aggressive": config,
+                "custom": mismatched,
+            }
+        )
 
 
 def test_research_report_cli_outputs_fixture_report(

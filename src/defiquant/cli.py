@@ -34,7 +34,7 @@ from defiquant.execution.paper import PaperExecutionAdapter
 from defiquant.execution.twak_cli import TwakCliExecutionAdapter
 from defiquant.execution.twak_portfolio import parse_twak_portfolio
 from defiquant.models import MarketData, Order, PortfolioState
-from defiquant.research import build_research_report
+from defiquant.research import build_research_report, validate_research_config_compatibility
 from defiquant.risk import RiskManager
 from defiquant.strategy import MomentumLiquidityStrategy
 from defiquant.tuning import load_risk_tuning_candidates, rank_risk_candidates
@@ -197,7 +197,7 @@ def main() -> None:
     if args.command == "research-report":
         config_paths = _config_paths(args.configs)
         configs = {path.stem.removeprefix("strategy."): load_config(path) for path in config_paths}
-        base_config = next(iter(configs.values()))
+        base_config = validate_research_config_compatibility(configs)
         markets = {
             days: _load_market(
                 args.fixture,

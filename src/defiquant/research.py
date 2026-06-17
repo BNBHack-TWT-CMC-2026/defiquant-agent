@@ -51,6 +51,29 @@ def build_research_report(
     }
 
 
+def validate_research_config_compatibility(configs: Mapping[str, AppConfig]) -> AppConfig:
+    if not configs:
+        raise ValueError("research report requires at least one strategy config")
+
+    base_name, base_config = next(iter(configs.items()))
+    errors: list[str] = []
+    for name, config in configs.items():
+        if config.universe_symbols != base_config.universe_symbols:
+            errors.append(f"{name} universe differs from {base_name}")
+        if config.strategy.stable_symbol != base_config.strategy.stable_symbol:
+            errors.append(f"{name} stable_symbol differs from {base_name}")
+        if (
+            config.competition.min_trades_per_day != base_config.competition.min_trades_per_day
+            or config.competition.min_total_trade_days
+            != base_config.competition.min_total_trade_days
+        ):
+            errors.append(f"{name} trade qualification rules differ from {base_name}")
+
+    if errors:
+        raise ValueError("research configs must be comparable: " + "; ".join(errors))
+    return base_config
+
+
 def _evaluate_window(
     config_name: str,
     config: AppConfig,
