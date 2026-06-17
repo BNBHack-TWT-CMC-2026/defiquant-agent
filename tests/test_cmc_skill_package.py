@@ -29,17 +29,35 @@ def test_cmc_skill_manifest_points_to_examples() -> None:
 def test_cmc_skill_fixture_output_shape() -> None:
     output = json.loads((SKILL_DIR / "examples" / "output.fixture.json").read_text())
 
-    assert len(output) == 6
+    assert len(output) == 4
     assert abs(sum(item["target_weight"] for item in output) - 1.0) < 1e-12
     assert output[-1] == {
         "symbol": "USDT",
-        "target_weight": 0.5,
+        "target_weight": 0.79,
         "score": 0.0,
         "reasons": ["reserve=min_cash"],
     }
     for item in output:
         assert set(item) == {"symbol", "target_weight", "score", "reasons"}
         assert isinstance(item["reasons"], list)
+
+
+def test_cmc_skill_fixture_output_uses_alpha_pool_reasons() -> None:
+    output = json.loads((SKILL_DIR / "examples" / "output.fixture.json").read_text())
+    non_stable = [item for item in output if item["symbol"] != "USDT"]
+    expected_keys = {
+        "medium_momentum",
+        "trend_strength",
+        "volume_impulse",
+        "liquidity_depth",
+        "short_reversal_guard",
+        "volatility",
+    }
+
+    assert non_stable
+    for item in non_stable:
+        reason_keys = {reason.split("=", maxsplit=1)[0] for reason in item["reasons"]}
+        assert reason_keys == expected_keys
 
 
 def test_cmc_skill_package_has_no_execution_instructions() -> None:

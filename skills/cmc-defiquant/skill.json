@@ -1,7 +1,7 @@
 {
   "name": "defiquant-momentum-liquidity-risk",
   "version": "0.1.0",
-  "description": "CMC-driven BNB Chain token rotation strategy with drawdown-aware risk controls.",
+  "description": "CMC-driven BNB Chain alpha pool strategy with drawdown-aware risk controls.",
   "track": "coinmarketcap-skill",
   "license": "MIT",
   "tags": ["coinmarketcap", "bnb-chain", "strategy", "risk", "non-executing"],
