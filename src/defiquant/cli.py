@@ -17,6 +17,12 @@ from defiquant.alpha import (
     load_token_addresses,
     scan_alpha_quotes,
 )
+from defiquant.alpha_evidence import (
+    ALPHA_EVIDENCE_MODES,
+    alpha_mode_config_path,
+    build_alpha_evidence,
+    choose_alpha_evidence_mode,
+)
 from defiquant.backtest import Backtester
 from defiquant.bnb_agent import preview_bnb_registration, register_bnb_agent
 from defiquant.cmc_agent_context import build_cmc_agent_context_packet
@@ -64,6 +70,25 @@ def main() -> None:
         help="Symbol set to scan with CMC latest quotes.",
     )
     scan_alpha.add_argument("--top", type=int, default=10)
+
+    alpha_evidence = subparsers.add_parser("alpha-evidence")
+    alpha_evidence.add_argument("--config", default="configs/strategy.json")
+    alpha_evidence.add_argument("--modes", default="configs/alpha_modes.json")
+    alpha_evidence.add_argument("--mode-config-dir", default="configs")
+    alpha_evidence.add_argument("--token-addresses", default=None)
+    alpha_evidence.add_argument(
+        "--mode",
+        choices=ALPHA_EVIDENCE_MODES,
+        default="auto",
+        help="Alpha mode to use for target weights; auto follows the latest quote scan.",
+    )
+    alpha_evidence.add_argument("--top", type=int, default=10)
+    alpha_evidence.add_argument(
+        "--portfolio-cash",
+        type=float,
+        default=None,
+        help="Cash notional for dry-run order sizing; defaults to selected config initial_cash.",
+    )
 
     cmc_context_packet = subparsers.add_parser("cmc-context-packet")
     cmc_context_packet.add_argument("--config", default="configs/strategy.json")
@@ -244,6 +269,39 @@ def main() -> None:
                     "token_addresses_path": args.token_addresses,
                     **result,
                 },
+                indent=2,
+            )
+        )
+        return
+
+    if args.command == "alpha-evidence":
+        token_addresses = load_token_addresses(Path(_token_addresses_path(args)))
+        symbols = _alpha_symbols("tradable", config, token_addresses)
+        quotes = load_cmc_latest_quotes(symbols)
+        modes = load_alpha_modes(Path(args.modes))
+        scan = scan_alpha_quotes(
+            quotes,
+            token_addresses=token_addresses,
+            top=max(1, args.top),
+            modes=modes,
+        )
+        selected_mode = choose_alpha_evidence_mode(args.mode, scan)
+        selected_config_path = alpha_mode_config_path(args.mode_config_dir, selected_mode)
+        selected_config = load_config(selected_config_path)
+        print(
+            json.dumps(
+                build_alpha_evidence(
+                    base_config=config,
+                    selected_config=selected_config,
+                    selected_config_path=selected_config_path,
+                    quotes=quotes,
+                    token_addresses=token_addresses,
+                    modes=modes,
+                    requested_mode=args.mode,
+                    selected_mode=selected_mode,
+                    top=max(1, args.top),
+                    portfolio_cash=args.portfolio_cash,
+                ),
                 indent=2,
             )
         )
