@@ -21,7 +21,17 @@ def generate_alpha_weight_candidates(max_candidates: int) -> list[AlphaWeightCan
     if max_candidates < 1:
         raise ValueError("max_candidates must be at least 1")
 
-    candidates = [AlphaWeightCandidate("baseline", AlphaWeights())]
+    baseline = AlphaWeightCandidate("baseline", AlphaWeights())
+    grid_candidates = _alpha_weight_grid()
+    if max_candidates == 1:
+        return [baseline]
+    if max_candidates >= len(grid_candidates) + 1:
+        return [baseline, *grid_candidates]
+    return [baseline, *_sample_evenly(grid_candidates, max_candidates - 1)]
+
+
+def _alpha_weight_grid() -> list[AlphaWeightCandidate]:
+    candidates: list[AlphaWeightCandidate] = []
     grids = {
         "medium_momentum": (0.20, 0.35, 0.50, 0.65, 0.80),
         "trend_strength": (0.00, 0.15, 0.30, 0.45, 0.60),
@@ -48,13 +58,25 @@ def generate_alpha_weight_candidates(max_candidates: int) -> list[AlphaWeightCan
                                 continue
                             candidates.append(
                                 AlphaWeightCandidate(
-                                    _candidate_name(len(candidates), weights),
+                                    _candidate_name(len(candidates) + 1, weights),
                                     weights,
                                 )
                             )
-                            if len(candidates) >= max_candidates:
-                                return candidates
     return candidates
+
+
+def _sample_evenly(
+    candidates: list[AlphaWeightCandidate],
+    count: int,
+) -> list[AlphaWeightCandidate]:
+    if count <= 0:
+        return []
+    if count >= len(candidates):
+        return candidates
+    if count == 1:
+        return [candidates[0]]
+    last_index = len(candidates) - 1
+    return [candidates[(index * last_index) // (count - 1)] for index in range(count)]
 
 
 def build_alpha_lab_report(

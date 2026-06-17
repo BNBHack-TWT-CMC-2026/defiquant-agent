@@ -23,6 +23,20 @@ def test_alpha_lab_generates_at_least_1000_deterministic_candidates() -> None:
     assert candidates[0].name == "baseline"
     assert candidates[0].weights == AlphaWeights()
     assert len({candidate.name for candidate in candidates}) == 1000
+    assert {candidate.weights.medium_momentum for candidate in candidates} == {
+        0.20,
+        0.35,
+        0.50,
+        0.65,
+        0.80,
+    }
+    assert {
+        0.80,
+        1.10,
+        1.40,
+        1.70,
+        2.00,
+    }.issubset({candidate.weights.volatility_penalty for candidate in candidates})
 
 
 def test_alpha_lab_report_ranks_candidates_on_fixture() -> None:
