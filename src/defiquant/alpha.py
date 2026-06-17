@@ -6,6 +6,9 @@ from math import log10
 from pathlib import Path
 from typing import Any
 
+from defiquant.config import StrategyConfig
+from defiquant.models import Signal
+
 STABLE_SYMBOLS = frozenset(
     {
         "USDT",
@@ -80,6 +83,60 @@ def scan_alpha_quotes(
         "top_tradable": tradable[:top],
         "top_discovery": ranked[:top],
     }
+
+
+def latest_quote_signals(
+    quotes: dict[str, dict[str, Any]],
+    *,
+    token_addresses: dict[str, str],
+    config: StrategyConfig,
+) -> list[Signal]:
+    rows = [
+        _score_quote(symbol, quote, token_addresses)
+        for symbol, quote in quotes.items()
+        if symbol.upper() not in STABLE_SYMBOLS and symbol.upper() in token_addresses
+    ]
+    ranked = sorted(rows, key=lambda item: item["alpha_score"], reverse=True)
+    selected = [
+        row
+        for row in ranked
+        if float(row["alpha_score"]) > 0 and float(row["alpha_score"]) >= config.min_score
+    ][: config.top_n]
+    if not selected:
+        return [
+            Signal(
+                config.stable_symbol,
+                1.0,
+                0.0,
+                ("risk_off=no_positive_latest_quote_scores",),
+            )
+        ]
+
+    score_floor = 0.001
+    total_score = sum(max(score_floor, float(row["alpha_score"])) for row in selected)
+    return [
+        Signal(
+            symbol=str(row["symbol"]),
+            target_weight=max(score_floor, float(row["alpha_score"])) / total_score,
+            score=float(row["alpha_score"]),
+            reasons=tuple([*row["reasons"], f"latest_quote_alpha={row['alpha_score']:.4f}"]),
+        )
+        for row in selected
+    ]
+
+
+def latest_quote_prices(
+    quotes: dict[str, dict[str, Any]],
+    *,
+    stable_symbol: str,
+) -> dict[str, float]:
+    prices = {
+        symbol.upper(): float(quote["price"])
+        for symbol, quote in quotes.items()
+        if quote.get("price") is not None
+    }
+    prices.setdefault(stable_symbol, 1.0)
+    return prices
 
 
 def _parse_mode(raw: object) -> AlphaMode:

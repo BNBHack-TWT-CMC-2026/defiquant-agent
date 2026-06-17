@@ -154,6 +154,59 @@ def test_execute_twak_can_plan_from_wallet_portfolio(
     assert sum(order.notional for order in fake.orders) <= 25.01
 
 
+def test_execute_twak_can_plan_from_latest_quote_alpha(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake = FakeTwakAdapter
+    fake.instances = []
+    fake.portfolio_reads = 0
+    fake.orders = []
+
+    def fake_load_quotes(symbols: tuple[str, ...]) -> dict[str, dict[str, object]]:
+        assert symbols == ("CAKE", "TWT", "AAVE", "LINK", "PENDLE", "USDT")
+        return {
+            "CAKE": _quote(change_1h=2.0, change_24h=8.0, change_7d=12.0),
+            "LINK": _quote(change_1h=0.2, change_24h=2.0, change_7d=5.0),
+            "USDT": _quote(change_1h=0.0, change_24h=0.0, change_7d=0.0),
+        }
+
+    monkeypatch.setattr("defiquant.cli.TwakCliExecutionAdapter", fake)
+    monkeypatch.setattr("defiquant.cli.load_cmc_latest_quotes", fake_load_quotes)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "execute", "--alpha-source", "latest", "--adapter", "twak"],
+    )
+
+    main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == ["buy:CAKE:600.00", "buy:LINK:600.00"]
+    assert [order.symbol for order in fake.orders] == ["CAKE", "LINK"]
+    assert fake.portfolio_reads == 0
+
+
+def test_execute_twak_ohlcv_preserves_adapter_token_address_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeTwakAdapter
+    fake.instances = []
+    fake.orders = []
+    monkeypatch.setattr("defiquant.cli.TwakCliExecutionAdapter", fake)
+    monkeypatch.setenv("TWAK_TOKEN_ADDRESSES_PATH", "configs/custom-addresses.json")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "execute", "--fixture", "--adapter", "twak"],
+    )
+
+    main()
+
+    assert fake.instances[-1].token_addresses is None
+    assert fake.instances[-1].token_addresses_path is None
+
+
 def test_execute_twak_can_validate_quotes(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -327,6 +380,8 @@ class FakeTwakAdapter:
         self.chain = "bsc"
         self.dry_run = bool(kwargs.get("dry_run", True))
         self.quote_only = kwargs.get("quote_only")
+        self.token_addresses = kwargs.get("token_addresses")
+        self.token_addresses_path = kwargs.get("token_addresses_path")
         type(self).instances.append(self)
 
     def register_competition(self) -> str:
@@ -361,3 +416,14 @@ class FakeTwakAdapter:
             {"symbol": order.symbol, "side": order.side, "quote": {"provider": "test"}}
             for order in orders
         ]
+
+
+def _quote(*, change_1h: float, change_24h: float, change_7d: float) -> dict[str, object]:
+    return {
+        "price": 1.0,
+        "volume_24h": 10_000_000,
+        "market_cap": 100_000_000,
+        "percent_change_1h": change_1h,
+        "percent_change_24h": change_24h,
+        "percent_change_7d": change_7d,
+    }
