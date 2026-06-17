@@ -9,9 +9,18 @@ package is prepared alongside the Track 1 live-trading agent.
 Expected behavior:
 
 1. Accept an eligible CMC token universe and historical OHLCV data.
-2. Run `defiquant` strategy scoring.
+2. Run the shared alpha pool strategy scoring.
 3. Return target weights, rationale, and risk flags.
 4. Never execute trades in Track 2 mode.
+
+Alpha pool reasons use the same names as Track 1:
+
+- `medium_momentum`
+- `trend_strength`
+- `volume_impulse`
+- `liquidity_depth`
+- `short_reversal_guard`
+- `volatility`
 
 Local command:
 

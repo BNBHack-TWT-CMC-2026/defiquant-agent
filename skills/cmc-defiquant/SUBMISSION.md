@@ -18,6 +18,15 @@ The skill turns CoinMarketCap OHLCV data into BNB Chain target weights with
 transparent rationale and risk controls. It is intended for CMC Agent Hub /
 Skills Marketplace style routing as a read-only analysis pipeline.
 
+It reuses the same alpha pool as Track 1:
+
+- `medium_momentum`
+- `trend_strength`
+- `volume_impulse`
+- `liquidity_depth`
+- `short_reversal_guard`
+- `volatility`
+
 ## Non-Execution Proof
 
 This package does not include:
@@ -45,5 +54,6 @@ adapters and live-operation guardrails.
 - Confirm `skill.json` parses as JSON.
 - Confirm examples parse as JSON.
 - Run fixture signal and compare the shape to `examples/output.fixture.json`.
+- Confirm each non-stable fixture output includes the alpha pool reason keys.
 - Confirm `SKILL.md` contains no wallet mutation instructions.
 - Confirm `.env` and API keys are not included.

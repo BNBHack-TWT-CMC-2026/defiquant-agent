@@ -13,7 +13,13 @@ without executing trades.
 
 1. Load the configured token universe and reject symbols outside the hackathon allowlist.
 2. Fetch daily CMC OHLCV data for the requested lookback.
-3. Score non-stable tokens by momentum, moving-average trend, liquidity, and volatility.
+3. Score non-stable tokens with the shared alpha pool:
+   - medium-term momentum,
+   - fast/slow trend strength,
+   - recent volume impulse,
+   - liquidity depth,
+   - short-term reversal and blowoff guard,
+   - volatility penalty.
 4. Apply risk guardrails:
    - max drawdown circuit breaker,
    - max position weight,
@@ -42,7 +48,14 @@ Return JSON-compatible objects shaped like:
   "symbol": "CAKE",
   "target_weight": 0.1,
   "score": 0.0757,
-  "reasons": ["momentum=-0.0292", "trend=-0.0402"]
+  "reasons": [
+    "medium_momentum=-0.0292",
+    "trend_strength=-0.0402",
+    "volume_impulse=0.0123",
+    "liquidity_depth=0.6950",
+    "short_reversal_guard=0.0000",
+    "volatility=0.0060"
+  ]
 }
 ```
 
