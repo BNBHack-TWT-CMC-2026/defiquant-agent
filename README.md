@@ -44,6 +44,7 @@ Scan current CMC quotes for the Track 1 alpha mode decision:
 uv run defiquant scan-alpha --symbols-source tradable --top 10
 uv run defiquant scan-alpha --symbols-source eligible --top 15
 uv run defiquant signal --config configs/strategy.aggressive.json --alpha-source latest
+uv run defiquant alpha-evidence --mode auto --top 10
 ```
 
 The tradable scan is read-only and recommends `aggressive`, `balanced`, or
@@ -72,6 +73,7 @@ Before funding the Track 1 wallet, run the safe readiness loop:
 uv run defiquant tune-risk --config configs/strategy.json --candidates configs/risk_tuning.json --cmc-days 90 --top 5
 uv run defiquant agent-endpoints --config configs/strategy.json --agent-url https://example.com --wallet-address 0x... --network bsc-testnet
 uv run defiquant track1-preflight --run-read-only
+uv run defiquant alpha-evidence --mode auto --portfolio-cash 1000
 uv run defiquant execute --config configs/strategy.aggressive.json --alpha-source latest --adapter twak --portfolio twak --validate-quotes --dry-run
 ```
 
@@ -195,5 +197,6 @@ Track 1 operations:
 - `docs/prefunding_readiness.md`: safe checks before wallet funding.
 - `docs/track1_registration.md`: registration preflight and evidence capture.
 - `docs/track1_live_operations.md`: live-window operating loop and halt criteria.
+- `uv run defiquant alpha-evidence --mode auto`: latest quote alpha, selected mode, target weights, and TWAK dry-run evidence packet.
 - `configs/live_operations.json`: funding and live notional cap presets.
 - `docs/bnb_agent_identity.md`: BNB Agent SDK identity dry-run and registration hard stop.
