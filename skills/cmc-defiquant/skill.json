@@ -1,5 +1,5 @@
 {
-  "name": "defiquant-momentum-liquidity-risk",
+  "name": "defiquant-alpha-pool-risk",
   "version": "0.1.0",
   "description": "CMC-driven BNB Chain alpha pool strategy with drawdown-aware risk controls.",
   "track": "coinmarketcap-skill",

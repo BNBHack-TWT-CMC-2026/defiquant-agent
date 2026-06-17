@@ -9,7 +9,7 @@ SKILL_DIR = Path("skills/cmc-defiquant")
 def test_cmc_skill_manifest_points_to_examples() -> None:
     manifest = json.loads((SKILL_DIR / "skill.json").read_text(encoding="utf-8"))
 
-    assert manifest["name"] == "defiquant-momentum-liquidity-risk"
+    assert manifest["name"] == "defiquant-alpha-pool-risk"
     assert manifest["track"] == "coinmarketcap-skill"
     assert manifest["execution"] == "disabled"
     assert manifest["entrypoint"]["args"][:3] == ["-m", "defiquant.cli", "signal"]
