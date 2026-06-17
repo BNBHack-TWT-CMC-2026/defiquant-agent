@@ -7,9 +7,11 @@ from defiquant.leveraged_volume_impulse import (
     LeveragedVolumeImpulseConfig,
     TenMinuteCandle,
     fixture_10m_market,
+    leveraged_sweep_to_jsonable,
     load_10m_csv,
     load_leveraged_volume_config,
     run_leveraged_volume_backtest,
+    run_leveraged_volume_sweep,
 )
 
 
@@ -77,6 +79,48 @@ def test_config_default_leverage_is_70x(tmp_path) -> None:
 
     assert LeveragedVolumeImpulseConfig().leverage == 70.0
     assert config.leverage == 70.0
+
+
+def test_default_sweep_runs_100_cases_and_sorts_by_score() -> None:
+    results = run_leveraged_volume_sweep(
+        fixture_10m_market(),
+        LeveragedVolumeImpulseConfig(seed=1000),
+    )
+
+    assert len(results) == 100
+    assert results[0].risk_adjusted_score >= results[-1].risk_adjusted_score
+    assert results[0].trade_count > 0
+
+
+def test_custom_sweep_grid_is_reproducible() -> None:
+    results = run_leveraged_volume_sweep(
+        fixture_10m_market(),
+        LeveragedVolumeImpulseConfig(seed=1000),
+        baseline_windows=(12,),
+        volume_spike_multiples=(10.0,),
+        leverages=(20.0, 70.0),
+        exit_volume_decreases=(3,),
+    )
+
+    assert [result.leverage for result in results] == [70.0, 20.0]
+    assert all(result.baseline_window == 12 for result in results)
+
+
+def test_sweep_json_includes_leverage_summary() -> None:
+    results = run_leveraged_volume_sweep(
+        fixture_10m_market(),
+        LeveragedVolumeImpulseConfig(seed=1000),
+        baseline_windows=(12,),
+        volume_spike_multiples=(10.0,),
+        leverages=(20.0, 70.0),
+        exit_volume_decreases=(3,),
+    )
+
+    payload = leveraged_sweep_to_jsonable(results, top=1)
+
+    assert payload["case_count"] == 2
+    assert len(payload["top"]) == 1
+    assert len(payload["leverage_summary"]) == 2
 
 
 def _market_with_spike(

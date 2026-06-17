@@ -84,6 +84,20 @@ class LeveragedBacktestResult:
     liquidated: bool
 
 
+@dataclass(frozen=True)
+class LeveragedSweepResult:
+    leverage: float
+    baseline_window: int
+    volume_spike_multiple: float
+    exit_volume_decreases: int
+    total_return: float
+    max_drawdown: float
+    trade_count: int
+    liquidated: bool
+    final_equity: float
+    risk_adjusted_score: float
+
+
 Market10m = dict[str, list[TenMinuteCandle]]
 
 
@@ -321,6 +335,47 @@ def run_leveraged_volume_backtest(
     )
 
 
+def run_leveraged_volume_sweep(
+    market: Market10m,
+    base_config: LeveragedVolumeImpulseConfig,
+    *,
+    baseline_windows: Sequence[int] = (6, 9, 12, 15, 18),
+    volume_spike_multiples: Sequence[float] = (5.0, 8.0, 10.0, 12.0, 15.0),
+    leverages: Sequence[float] = (20.0, 30.0, 50.0, 70.0),
+    exit_volume_decreases: Sequence[int] = (3,),
+) -> tuple[LeveragedSweepResult, ...]:
+    results: list[LeveragedSweepResult] = []
+    for baseline_window in baseline_windows:
+        for volume_spike_multiple in volume_spike_multiples:
+            for leverage in leverages:
+                for exit_decreases in exit_volume_decreases:
+                    config = LeveragedVolumeImpulseConfig(
+                        seed=base_config.seed,
+                        leverage=leverage,
+                        baseline_window=baseline_window,
+                        volume_spike_multiple=volume_spike_multiple,
+                        exit_volume_decreases=exit_decreases,
+                        fee_bps=base_config.fee_bps,
+                        slippage_bps=base_config.slippage_bps,
+                    )
+                    result = run_leveraged_volume_backtest(market, config)
+                    results.append(
+                        LeveragedSweepResult(
+                            leverage=leverage,
+                            baseline_window=baseline_window,
+                            volume_spike_multiple=volume_spike_multiple,
+                            exit_volume_decreases=exit_decreases,
+                            total_return=result.total_return,
+                            max_drawdown=result.max_drawdown,
+                            trade_count=len(result.trades),
+                            liquidated=result.liquidated,
+                            final_equity=result.final_equity,
+                            risk_adjusted_score=_risk_adjusted_score(result),
+                        )
+                    )
+    return tuple(sorted(results, key=lambda item: item.risk_adjusted_score, reverse=True))
+
+
 def leveraged_result_to_jsonable(result: LeveragedBacktestResult) -> dict[str, Any]:
     return {
         "initial_equity": result.initial_equity,
@@ -348,6 +403,38 @@ def leveraged_result_to_jsonable(result: LeveragedBacktestResult) -> dict[str, A
         "equity_curve": [
             {"timestamp": timestamp.isoformat(), "equity": equity}
             for timestamp, equity in result.equity_curve
+        ],
+    }
+
+
+def leveraged_sweep_to_jsonable(
+    results: Sequence[LeveragedSweepResult],
+    *,
+    top: int = 10,
+) -> dict[str, Any]:
+    top_results = list(results[:top])
+    return {
+        "case_count": len(results),
+        "score_formula": ("total_return - 2*max_drawdown - liquidation_penalty - no_trade_penalty"),
+        "liquidated_case_count": sum(1 for result in results if result.liquidated),
+        "no_trade_case_count": sum(1 for result in results if result.trade_count == 0),
+        "leverage_summary": _leverage_summary(results),
+        "top": [
+            {
+                "rank": index,
+                "leverage": result.leverage,
+                "baseline_window": result.baseline_window,
+                "baseline_minutes": result.baseline_window * 10,
+                "volume_spike_multiple": result.volume_spike_multiple,
+                "exit_volume_decreases": result.exit_volume_decreases,
+                "total_return": result.total_return,
+                "max_drawdown": result.max_drawdown,
+                "trade_count": result.trade_count,
+                "liquidated": result.liquidated,
+                "final_equity": result.final_equity,
+                "risk_adjusted_score": result.risk_adjusted_score,
+            }
+            for index, result in enumerate(top_results, start=1)
         ],
     }
 
@@ -525,6 +612,36 @@ def _hit_liquidation(
 
 def _cost_rate(config: LeveragedVolumeImpulseConfig) -> float:
     return (config.fee_bps + config.slippage_bps) / 10_000.0
+
+
+def _risk_adjusted_score(result: LeveragedBacktestResult) -> float:
+    liquidation_penalty = 1.0 if result.liquidated else 0.0
+    no_trade_penalty = 0.25 if not result.trades else 0.0
+    return (
+        result.total_return - (2.0 * result.max_drawdown) - liquidation_penalty - no_trade_penalty
+    )
+
+
+def _leverage_summary(results: Sequence[LeveragedSweepResult]) -> list[dict[str, Any]]:
+    leverages = sorted({result.leverage for result in results})
+    summary: list[dict[str, Any]] = []
+    for leverage in leverages:
+        leverage_results = [result for result in results if result.leverage == leverage]
+        best = max(leverage_results, key=lambda result: result.risk_adjusted_score)
+        summary.append(
+            {
+                "leverage": leverage,
+                "case_count": len(leverage_results),
+                "best_risk_adjusted_score": best.risk_adjusted_score,
+                "best_total_return": best.total_return,
+                "best_max_drawdown": best.max_drawdown,
+                "liquidated_case_count": sum(1 for result in leverage_results if result.liquidated),
+                "no_trade_case_count": sum(
+                    1 for result in leverage_results if result.trade_count == 0
+                ),
+            }
+        )
+    return summary
 
 
 def _candles_by_time(market: Market10m) -> dict[datetime, list[TenMinuteCandle]]:
