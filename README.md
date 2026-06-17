@@ -43,18 +43,21 @@ Scan current CMC quotes for the Track 1 alpha mode decision:
 ```powershell
 uv run defiquant scan-alpha --symbols-source tradable --top 10
 uv run defiquant scan-alpha --symbols-source eligible --top 15
+uv run defiquant signal --config configs/strategy.aggressive.json --alpha-source latest
 ```
 
 The tradable scan is read-only and recommends `aggressive`, `balanced`, or
 `defensive` live parameters. The broad eligible scan is discovery-only; new
 symbols are not executable until their BSC token address is verified and added
-to `configs/token_addresses.bsc.json`.
+to `configs/token_addresses.bsc.json`. Use `--alpha-source latest` only for
+Track 1 live-window rehearsal and execution planning; the default signal path
+remains daily OHLCV for deterministic backtests and Track 2.
 
 Dry-run a TWAK execution plan:
 
 ```powershell
 uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak --dry-run
-uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --dry-run
+uv run defiquant execute --config configs/strategy.aggressive.json --alpha-source latest --adapter twak --portfolio twak --validate-quotes --dry-run
 ```
 
 Run the full local check:
@@ -69,7 +72,7 @@ Before funding the Track 1 wallet, run the safe readiness loop:
 uv run defiquant tune-risk --config configs/strategy.json --candidates configs/risk_tuning.json --cmc-days 90 --top 5
 uv run defiquant agent-endpoints --config configs/strategy.json --agent-url https://example.com --wallet-address 0x... --network bsc-testnet
 uv run defiquant track1-preflight --run-read-only
-uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --dry-run
+uv run defiquant execute --config configs/strategy.aggressive.json --alpha-source latest --adapter twak --portfolio twak --validate-quotes --dry-run
 ```
 
 ## Agent And CLI Setup
@@ -82,7 +85,7 @@ uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter 
 ## Architecture
 
 - `src/defiquant/strategy.py`: shared alpha model.
-- `src/defiquant/alpha.py`: CMC latest-quote alpha scanner and mode selector.
+- `src/defiquant/alpha.py`: CMC latest-quote alpha scanner, mode selector, and live-window signal source.
 - `src/defiquant/risk.py`: guardrails for max drawdown, concentration, turnover, and cash.
 - `src/defiquant/backtest.py`: deterministic daily rebalance simulator.
 - `src/defiquant/competition.py`: hackathon allowlist and qualification guardrails.
@@ -115,6 +118,12 @@ The model ranks eligible CMC-listed BNB Chain tokens with an alpha pool:
 - volatility penalty.
 
 Weights are inverse-volatility adjusted, capped per asset, and forced to keep a cash/stable reserve. If portfolio drawdown breaches the configured limit, the risk manager moves to cash-only mode.
+
+For Track 1 live operations, the CLI can also convert current CMC latest quotes
+into executable target weights with `--alpha-source latest`. That path uses the
+same risk manager and TWAK guards, but it is intentionally excluded from
+historical backtests because latest quote data is not a deterministic OHLCV
+series.
 
 ## Competition Rules Captured
 

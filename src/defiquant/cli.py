@@ -10,7 +10,13 @@ from pathlib import Path
 
 from defiquant.agent_endpoint import build_agent_endpoint_payloads
 from defiquant.agent_profile import build_agent_profile
-from defiquant.alpha import load_alpha_modes, load_token_addresses, scan_alpha_quotes
+from defiquant.alpha import (
+    latest_quote_prices,
+    latest_quote_signals,
+    load_alpha_modes,
+    load_token_addresses,
+    scan_alpha_quotes,
+)
 from defiquant.backtest import Backtester
 from defiquant.bnb_agent import preview_bnb_registration, register_bnb_agent
 from defiquant.cmc_agent_context import build_cmc_agent_context_packet
@@ -38,6 +44,7 @@ def main() -> None:
 
     signal = subparsers.add_parser("signal")
     _add_market_args(signal)
+    _add_alpha_source_args(signal)
 
     tune_risk = subparsers.add_parser("tune-risk")
     _add_market_args(tune_risk)
@@ -67,6 +74,7 @@ def main() -> None:
 
     execute = subparsers.add_parser("execute")
     _add_market_args(execute)
+    _add_alpha_source_args(execute)
     _add_live_args(execute)
     _add_twak_live_guard_args(execute)
     execute.add_argument("--adapter", choices=("paper", "twak"), default="paper")
@@ -257,16 +265,16 @@ def main() -> None:
     if args.command == "execute" and args.adapter == "twak" and not args.dry_run:
         _validate_twak_live_static_args(args)
 
-    market = _load_market(
-        args.fixture,
-        config.universe_symbols,
-        cmc_days=args.cmc_days,
-        cmc_end_date=args.cmc_end_date,
-    )
     strategy = MomentumLiquidityStrategy(config.strategy)
     risk = RiskManager(config.risk, config.strategy.stable_symbol)
 
     if args.command == "backtest":
+        market = _load_market(
+            args.fixture,
+            config.universe_symbols,
+            cmc_days=args.cmc_days,
+            cmc_end_date=args.cmc_end_date,
+        )
         result = Backtester(
             strategy,
             risk,
@@ -277,9 +285,28 @@ def main() -> None:
         print(json.dumps(to_jsonable(result), indent=2))
         return
 
-    prices = {symbol: candles[-1].close for symbol, candles in market.items() if candles}
+    if args.alpha_source == "latest":
+        token_addresses = load_token_addresses(Path(args.token_addresses))
+        symbols = _latest_signal_symbols(config, token_addresses)
+        quotes = load_cmc_latest_quotes(symbols)
+        raw_signals = latest_quote_signals(
+            quotes,
+            token_addresses=token_addresses,
+            config=config.strategy,
+        )
+        prices = latest_quote_prices(quotes, stable_symbol=config.strategy.stable_symbol)
+    else:
+        market = _load_market(
+            args.fixture,
+            config.universe_symbols,
+            cmc_days=args.cmc_days,
+            cmc_end_date=args.cmc_end_date,
+        )
+        raw_signals = strategy.generate(market)
+        prices = {symbol: candles[-1].close for symbol, candles in market.items() if candles}
+
     portfolio = _load_portfolio(args, config, prices)
-    signals = risk.apply(strategy.generate(market), portfolio, prices)
+    signals = risk.apply(raw_signals, portfolio, prices)
 
     if args.command == "signal":
         print(json.dumps([to_jsonable(signal) for signal in signals], indent=2))
@@ -294,6 +321,7 @@ def main() -> None:
             dry_run=args.dry_run,
             stable_symbol=config.strategy.stable_symbol,
             quote_only=args.dry_run,
+            token_addresses=load_token_addresses(Path(args.token_addresses)),
         )
         if not args.dry_run:
             _validate_twak_live_preflight(args, orders)
@@ -367,6 +395,20 @@ def _add_market_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_alpha_source_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--alpha-source",
+        choices=("ohlcv", "latest"),
+        default="ohlcv",
+        help="Use daily OHLCV strategy signals or CMC latest quote alpha signals.",
+    )
+    parser.add_argument(
+        "--token-addresses",
+        default="configs/token_addresses.bsc.json",
+        help="BSC token address map used by latest quote alpha and TWAK execution.",
+    )
+
+
 def _load_market(
     use_fixture: bool,
     symbols: tuple[str, ...],
@@ -400,6 +442,17 @@ def _alpha_symbols(
             if symbol.upper() in token_addresses or symbol == config.strategy.stable_symbol
         )
     return tuple(sorted(config.eligible_symbols))
+
+
+def _latest_signal_symbols(
+    config: AppConfig,
+    token_addresses: dict[str, str],
+) -> tuple[str, ...]:
+    return tuple(
+        symbol
+        for symbol in config.universe_symbols
+        if symbol == config.strategy.stable_symbol or symbol.upper() in token_addresses
+    )
 
 
 def _optional_symbols(value: str) -> tuple[str, ...] | None:

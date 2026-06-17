@@ -50,7 +50,8 @@ After funding approval and transfer, rerun:
 
 ```powershell
 uv run defiquant track1-preflight --run-read-only
-uv run defiquant execute --config configs/strategy.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --dry-run
+uv run defiquant signal --config configs/strategy.json --alpha-source latest
+uv run defiquant execute --config configs/strategy.json --alpha-source latest --adapter twak --portfolio twak --validate-quotes --dry-run
 ```
 
 ## Live Trade Command Shape
@@ -59,6 +60,14 @@ Run the read-only alpha decision first:
 
 ```powershell
 uv run defiquant scan-alpha --symbols-source tradable --top 10
+```
+
+For live-window rehearsal, convert the same latest CMC quote alpha into target
+weights before any TWAK command:
+
+```powershell
+uv run defiquant signal --config configs/strategy.<selected>.json --alpha-source latest
+uv run defiquant execute --config configs/strategy.<selected>.json --alpha-source latest --adapter twak --portfolio twak --validate-quotes --dry-run
 ```
 
 Then choose one of the reviewed mode configs:
@@ -70,13 +79,18 @@ Then choose one of the reviewed mode configs:
 The only allowed live execution shape is:
 
 ```powershell
-uv run defiquant execute --config configs/strategy.<selected>.json --cmc-days 90 --adapter twak --portfolio twak --validate-quotes --live --confirm-live I_UNDERSTAND_TWAK_LIVE_SWAP_RISK --max-live-notional-usd 1
+uv run defiquant execute --config configs/strategy.<selected>.json --alpha-source latest --adapter twak --portfolio twak --validate-quotes --live --confirm-live I_UNDERSTAND_TWAK_LIVE_SWAP_RISK --max-live-notional-usd 1
 ```
 
 Replace `<selected>` with `aggressive`, `balanced`, or `defensive` only after
 the matching dry-run and quote validation have been captured. For the first
 approved smoke trade, prefer `defensive` unless the approval explicitly names a
 different mode and cap.
+
+The default `signal` and `execute` path still uses daily OHLCV candles. The
+`--alpha-source latest` path is a Track 1 execution overlay for current CMC
+quote momentum and liquidity; it does not change Track 2 or the deterministic
+backtest path.
 
 Choose the cap from `configs/live_operations.json`:
 

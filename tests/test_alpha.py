@@ -6,7 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from defiquant.alpha import load_alpha_modes, load_token_addresses, scan_alpha_quotes
+from defiquant.alpha import (
+    latest_quote_prices,
+    latest_quote_signals,
+    load_alpha_modes,
+    load_token_addresses,
+    scan_alpha_quotes,
+)
 from defiquant.config import load_config
 
 
@@ -31,6 +37,55 @@ def test_scan_alpha_quotes_ranks_tradable_tokens() -> None:
     assert result["top_discovery"][0]["tradable"] is False
     assert result["top_tradable"][0]["symbol"] == "CAKE"
     assert result["recommended_mode"]["mode"] == "aggressive"
+
+
+def test_latest_quote_signals_use_positive_tradable_quote_alpha() -> None:
+    config = load_config(Path("configs/strategy.aggressive.json")).strategy
+    quotes = {
+        "CAKE": _quote("CAKE", change_1h=2.0, change_24h=8.0, change_7d=12.0),
+        "LINK": _quote("LINK", change_1h=-0.2, change_24h=1.0, change_7d=4.0),
+        "BONK": _quote("BONK", change_1h=5.0, change_24h=20.0, change_7d=40.0),
+        "USDT": _quote("USDT", change_1h=0.0, change_24h=0.0, change_7d=0.0),
+    }
+
+    signals = latest_quote_signals(
+        quotes,
+        token_addresses={"CAKE": "0xCake", "LINK": "0xLink"},
+        config=config,
+    )
+
+    assert signals[0].symbol == "CAKE"
+    assert {signal.symbol for signal in signals} == {"CAKE", "LINK"}
+    assert abs(sum(signal.target_weight for signal in signals) - 1.0) < 0.000001
+    assert "latest_quote_alpha=" in " ".join(signals[0].reasons)
+
+
+def test_latest_quote_signals_fall_back_to_stable_when_no_positive_alpha() -> None:
+    config = load_config(Path("configs/strategy.defensive.json")).strategy
+    quotes = {
+        "CAKE": _quote("CAKE", change_1h=-2.0, change_24h=-8.0, change_7d=-12.0),
+        "USDT": _quote("USDT", change_1h=0.0, change_24h=0.0, change_7d=0.0),
+    }
+
+    signals = latest_quote_signals(
+        quotes,
+        token_addresses={"CAKE": "0xCake"},
+        config=config,
+    )
+
+    assert len(signals) == 1
+    assert signals[0].symbol == "USDT"
+    assert signals[0].target_weight == 1.0
+    assert signals[0].reasons == ("risk_off=no_positive_latest_quote_scores",)
+
+
+def test_latest_quote_prices_include_stable_reserve_price() -> None:
+    prices = latest_quote_prices(
+        {"CAKE": _quote("CAKE", change_1h=1.0, change_24h=2.0, change_7d=3.0)},
+        stable_symbol="USDT",
+    )
+
+    assert prices == {"CAKE": 1.0, "USDT": 1.0}
 
 
 def test_scan_alpha_cli_uses_tradable_universe(
@@ -60,6 +115,38 @@ def test_scan_alpha_cli_uses_tradable_universe(
     assert payload["symbols_source"] == "tradable"
     assert payload["symbols_requested"] == 6
     assert payload["top_tradable"][0]["symbol"] == "CAKE"
+
+
+def test_signal_cli_can_use_latest_quote_alpha(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from defiquant.cli import main
+
+    def fake_load_quotes(symbols: tuple[str, ...]) -> dict[str, dict[str, object]]:
+        assert symbols == ("CAKE", "TWT", "AAVE", "LINK", "PENDLE", "USDT")
+        return {
+            "CAKE": _quote("CAKE", change_1h=2.0, change_24h=8.0, change_7d=12.0),
+            "LINK": _quote("LINK", change_1h=0.2, change_24h=2.0, change_7d=5.0),
+            "USDT": _quote("USDT", change_1h=0.0, change_24h=0.0, change_7d=0.0),
+        }
+
+    monkeypatch.setattr("defiquant.cli.load_cmc_latest_quotes", fake_load_quotes)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["defiquant", "signal", "--alpha-source", "latest"],
+    )
+
+    main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload[0]["symbol"] == "CAKE"
+    assert payload[0]["target_weight"] == pytest.approx(0.07)
+    assert "latest_quote_alpha=" in " ".join(payload[0]["reasons"])
+    assert payload[-1]["symbol"] == "USDT"
+    assert payload[-1]["target_weight"] == pytest.approx(0.86)
+    assert payload[-1]["reasons"] == ["reserve=min_cash"]
 
 
 def test_alpha_mode_strategy_configs_match_mode_file() -> None:
