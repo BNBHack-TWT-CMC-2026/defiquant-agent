@@ -13,6 +13,8 @@
       "symbol": "CAKE",
       "contract_address": "0x0000000000000000000000000000000000000000",
       "network_slug": "bsc",
+      "network_id": "14",
+      "platform": "bsc",
       "reverse_order": false
     }
   ]

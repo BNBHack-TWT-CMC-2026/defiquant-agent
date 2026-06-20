@@ -6,7 +6,9 @@ from datetime import UTC, datetime, timedelta
 from track1_volume_impulse_lab.cmc_dex import (
     FiveMinuteCandle,
     aggregate_5m_to_10m,
+    load_pairs_config,
     parse_dex_ohlcv_5m,
+    parse_kline_candles_5m,
 )
 from track1_volume_impulse_lab.strategy import (
     LabConfig,
@@ -19,6 +21,7 @@ from track1_volume_impulse_lab.strategy import (
     run_backtest,
     signal_for_candle,
     summary_markdown,
+    weekly_periods,
     write_volume_baselines,
 )
 
@@ -68,6 +71,47 @@ def test_parse_dex_ohlcv_5m_accepts_cmc_list_payload() -> None:
     assert candles[0].symbol == "CAKE"
     assert candles[0].close == 1.1
     assert candles[0].timestamp.tzinfo is not None
+
+
+def test_parse_kline_candles_5m_accepts_cmc_array_payload() -> None:
+    payload = {
+        "data": [
+            [1.0, 1.2, 0.9, 1.1, 123.0, 1_717_200_000_000, 7],
+        ]
+    }
+
+    candles = parse_kline_candles_5m("cake", payload)
+
+    assert candles[0].symbol == "CAKE"
+    assert candles[0].close == 1.1
+    assert candles[0].volume == 123
+    assert candles[0].timestamp.tzinfo is not None
+
+
+def test_load_pairs_config_accepts_network_id_and_platform(tmp_path) -> None:
+    path = tmp_path / "pairs.json"
+    path.write_text(
+        """
+        {
+          "pairs": [
+            {
+              "symbol": "test",
+              "contract_address": "0x123",
+              "network_slug": "bsc",
+              "network_id": "14",
+              "platform": "bsc"
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    pair = load_pairs_config(path)[0]
+
+    assert pair.symbol == "TEST"
+    assert pair.network_id == "14"
+    assert pair.platform == "bsc"
 
 
 def test_signal_uses_prior_30_day_average_and_excludes_current_candle() -> None:
@@ -125,6 +169,58 @@ def test_exits_after_configured_consecutive_volume_decreases() -> None:
     assert result.trades[0].exit_reason == "volume_decrease_exit"
 
 
+def test_switch_uses_last_position_price_when_current_symbol_candle_is_missing() -> None:
+    config = LabConfig(seed=1000, baseline_days=1, fee_bps=0, slippage_bps=0)
+    params = ParameterSet(volume_spike_multiple=2.0, leverage=1.0, exit_volume_decreases=2)
+    start = datetime(2026, 6, 1, tzinfo=UTC)
+    baseline_window = config.baseline_window
+    alpha: list[TenMinuteCandle] = []
+    beta: list[TenMinuteCandle] = []
+    for index in range(baseline_window):
+        timestamp = start + timedelta(minutes=10 * index)
+        alpha.append(TenMinuteCandle("ALPHA", timestamp, 10, 10, 10, 10, 100))
+        beta.append(TenMinuteCandle("BETA", timestamp, 50, 50, 50, 50, 100))
+    alpha.append(
+        TenMinuteCandle(
+            "ALPHA",
+            start + timedelta(minutes=10 * baseline_window),
+            10,
+            11,
+            10,
+            11,
+            300,
+        )
+    )
+    beta.extend(
+        [
+            TenMinuteCandle(
+                "BETA",
+                start + timedelta(minutes=10 * baseline_window),
+                50,
+                50,
+                50,
+                50,
+                100,
+            ),
+            TenMinuteCandle(
+                "BETA",
+                start + timedelta(minutes=10 * (baseline_window + 1)),
+                50,
+                55,
+                50,
+                55,
+                400,
+            ),
+        ]
+    )
+
+    result = run_backtest({"ALPHA": alpha, "BETA": beta}, params, config)
+
+    assert result.trades[0].symbol == "ALPHA"
+    assert result.trades[0].exit_reason == "switch"
+    assert result.trades[0].exit_price == 11
+
+
 def test_weekly_optimizer_filters_liquidation_and_reports_best() -> None:
     params = parameter_grid(
         volume_spike_multiples=(2.0,),
@@ -143,6 +239,33 @@ def test_weekly_optimizer_filters_liquidation_and_reports_best() -> None:
     assert any(period.best is not None for period in report.periods)
     assert report.overall_best_parameters is not None
     assert "Weekly Best" in summary_markdown(report)
+
+
+def test_weekly_periods_ignore_symbols_without_baseline_window() -> None:
+    config = LabConfig(baseline_days=1, period_days=1)
+    sparse_start = datetime(2026, 1, 1, tzinfo=UTC)
+    ready_start = datetime(2026, 2, 1, tzinfo=UTC)
+    market = {
+        "SPARSE": [
+            TenMinuteCandle("SPARSE", sparse_start, 1, 1, 1, 1, 100),
+        ],
+        "READY": [
+            TenMinuteCandle(
+                "READY",
+                ready_start + timedelta(minutes=10 * index),
+                1,
+                1,
+                1,
+                1,
+                100,
+            )
+            for index in range(config.baseline_window + 2)
+        ],
+    }
+
+    periods = weekly_periods(market, config)
+
+    assert periods[0][0] == ready_start + timedelta(minutes=10 * config.baseline_window)
 
 
 def test_csv_loader_round_trips_10m_candles(tmp_path) -> None:

@@ -343,12 +343,10 @@ def run_backtest(
                 position = open_position(signal, equity, parameters, config)
                 equity = position.margin
             elif signal.symbol != position.symbol or signal.side != position.side:
-                exit_candle = current_by_symbol.get(position.symbol)
-                exit_price = exit_candle.close if exit_candle is not None else signal.price
                 trade, equity = close_position(
                     position,
                     exit_time=timestamp,
-                    exit_price=exit_price,
+                    exit_price=_position_exit_price(position, current_by_symbol, history),
                     exit_reason="switch",
                     config=config,
                 )
@@ -366,12 +364,10 @@ def run_backtest(
         if drawdown > config.max_drawdown:
             risk_stopped = True
             if position is not None:
-                exit_candle = current_by_symbol.get(position.symbol)
-                exit_price = exit_candle.close if exit_candle is not None else position.entry_price
                 trade, equity = close_position(
                     position,
                     exit_time=timestamp,
-                    exit_price=exit_price,
+                    exit_price=_position_exit_price(position, current_by_symbol, history),
                     exit_reason="mdd_stop",
                     config=config,
                 )
@@ -481,11 +477,17 @@ def optimize_weekly_periods(
 
 
 def weekly_periods(market: Market10m, config: LabConfig) -> tuple[tuple[datetime, datetime], ...]:
-    timestamps = [candle.timestamp for candle in iter_candles(market)]
-    if not timestamps:
+    ready_starts: list[datetime] = []
+    ready_ends: list[datetime] = []
+    for candles in sort_market(dict(market)).values():
+        if len(candles) <= config.baseline_window:
+            continue
+        ready_starts.append(candles[config.baseline_window].timestamp)
+        ready_ends.append(candles[-1].timestamp + TEN_MINUTES)
+    if not ready_starts:
         return ()
-    start = min(timestamps) + timedelta(days=config.baseline_days)
-    end = max(timestamps) + TEN_MINUTES
+    start = min(ready_starts)
+    end = max(ready_ends)
     step = timedelta(days=config.period_days)
     periods: list[tuple[datetime, datetime]] = []
     cursor = start
@@ -838,6 +840,18 @@ def directional_return(position: Position, exit_price: float) -> float:
     return raw if position.side == "long" else -raw
 
 
+def _position_exit_price(
+    position: Position,
+    current_by_symbol: dict[str, TenMinuteCandle],
+    history: dict[str, list[TenMinuteCandle]],
+) -> float:
+    current_candle = current_by_symbol.get(position.symbol)
+    if current_candle is not None:
+        return current_candle.close
+    symbol_history = history.get(position.symbol, [])
+    return symbol_history[-1].close if symbol_history else position.entry_price
+
+
 def cost_rate(config: LabConfig) -> float:
     return (config.fee_bps + config.slippage_bps) / 10_000.0
 
@@ -939,10 +953,10 @@ def _progress(items: range, *, enabled: bool, desc: str) -> Any:
 
 
 def _advance(progress: Any, case_index: int) -> None:
+    _ = case_index
     if isinstance(progress, _NullProgress):
         return
-    progress.n = case_index
-    progress.refresh()
+    progress.update(1)
 
 
 def _set_progress_postfix(progress: Any, **values: str) -> None:

@@ -6,7 +6,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from track1_volume_impulse_lab.cmc_dex import fetch_cmc_dex_10m_market, load_pairs_config
+from track1_volume_impulse_lab.cmc_dex import (
+    fetch_cmc_dex_10m_market,
+    fetch_cmc_kline_10m_market,
+    load_pairs_config,
+)
 from track1_volume_impulse_lab.strategy import (
     LabConfig,
     fixture_market,
@@ -34,6 +38,12 @@ def main() -> None:
     parser.add_argument("--output-dir", default="artifacts/track1-volume-impulse")
     parser.add_argument("--time-start", default="")
     parser.add_argument("--time-end", default="")
+    parser.add_argument(
+        "--cmc-source",
+        choices=("dex-ohlcv", "kline", "kline-latest"),
+        default="dex-ohlcv",
+    )
+    parser.add_argument("--kline-limit", type=int, default=600)
     parser.add_argument("--volume-spikes", default=DEFAULT_VOLUME_SPIKES)
     parser.add_argument("--leverages", default=DEFAULT_LEVERAGES)
     parser.add_argument("--exit-decreases", default=DEFAULT_EXIT_DECREASES)
@@ -70,6 +80,14 @@ def _load_market(args: argparse.Namespace, lab_config: LabConfig):
     if args.csv_10m:
         return load_10m_csv(args.csv_10m)
 
+    pairs = load_pairs_config(args.config)
+    if args.cmc_source == "kline-latest":
+        return fetch_cmc_kline_10m_market(
+            pairs,
+            limit=args.kline_limit,
+            cache_dir=Path(args.output_dir) / "raw",
+        )
+
     if not args.time_end:
         raise SystemExit("Use --fixture, --csv-10m, or provide --time-end for CMC DEX loading")
     time_end = _parse_datetime_arg(args.time_end)
@@ -78,7 +96,14 @@ def _load_market(args: argparse.Namespace, lab_config: LabConfig):
         if args.time_start
         else time_end - timedelta(days=lab_config.baseline_days + (lab_config.period_days * 4))
     )
-    pairs = load_pairs_config(args.config)
+    if args.cmc_source == "kline":
+        return fetch_cmc_kline_10m_market(
+            pairs,
+            time_start=time_start.isoformat(),
+            time_end=time_end.isoformat(),
+            limit=args.kline_limit,
+            cache_dir=Path(args.output_dir) / "raw",
+        )
     return fetch_cmc_dex_10m_market(
         pairs,
         time_start=time_start.isoformat(),
