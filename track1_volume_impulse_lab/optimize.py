@@ -52,7 +52,10 @@ def main() -> None:
     args = parser.parse_args()
 
     lab_config = _load_lab_config(args.config)
-    market = _load_market(args, lab_config)
+    try:
+        market = _load_market(args, lab_config)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     write_10m_csv(market, output_dir / "candles_10m.csv")

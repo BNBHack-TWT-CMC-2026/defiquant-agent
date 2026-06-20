@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -98,14 +99,19 @@ class CmcDexClient:
             url,
             headers={"X-CMC_PRO_API_KEY": self.api_key, "Accept": "application/json"},
         )
-        with urlopen(request, timeout=30) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        try:
+            with urlopen(request, timeout=30) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            try:
+                payload = json.loads(body)
+            except json.JSONDecodeError as decode_exc:
+                raise RuntimeError(f"CMC API HTTP {exc.code}: {body[:300]}") from decode_exc
+            _raise_cmc_payload_error(payload)
+            raise RuntimeError(f"CMC API HTTP {exc.code}") from exc
         if isinstance(payload, dict):
-            status = payload.get("status", {})
-            error_code = int(status.get("error_code") or 0) if isinstance(status, dict) else 0
-            if error_code:
-                message = status.get("error_message") or "CoinMarketCap API request failed"
-                raise RuntimeError(f"CMC API error {error_code}: {message}")
+            _raise_cmc_payload_error(payload)
         return payload
 
 
@@ -304,6 +310,17 @@ def _kline_rows(payload: Any) -> list[Any]:
         data = payload.get("data")
         return data if isinstance(data, list) else []
     return []
+
+
+def _raise_cmc_payload_error(payload: Any) -> None:
+    if not isinstance(payload, dict):
+        return
+    status = payload.get("status", {})
+    error_code = int(status.get("error_code") or 0) if isinstance(status, dict) else 0
+    if not error_code:
+        return
+    message = status.get("error_message") or "CoinMarketCap API request failed"
+    raise RuntimeError(f"CMC API error {error_code}: {message}")
 
 
 def _first_quote(value: Any) -> dict[str, Any]:
