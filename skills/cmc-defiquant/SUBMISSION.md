@@ -13,6 +13,8 @@ Included files:
 - `examples/output.fixture.json`: deterministic target-weight output.
 - `examples/regime-output.fixture.json`: deterministic up-channel/down-channel
   regime strategy spec output.
+- `examples/delta-neutral-output.fixture.json`: deterministic delta-neutral
+  walk-forward lab output.
 
 ## Purpose
 
@@ -42,6 +44,16 @@ It also includes a Track 2-only non-executing regime spec:
 - `range_or_transition`: factors disagree, so the skill records the regime and
   does not express a directional preference.
 
+It adds a Track 2-only non-executing delta-neutral lab:
+
+- `bull`, `bear`, and `mixed` market regimes from the equal-weight index trend
+  angle.
+- Per-coin up-channel/down-channel/transition classification from trend angle
+  and lookback momentum.
+- Long/short basket variants that scale the short leg to reduce market beta.
+- Walk-forward train/test loops with transaction costs and out-of-sample
+  reporting.
+
 ## Non-Execution Proof
 
 This package does not include:
@@ -60,6 +72,8 @@ uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
 uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
+uv run defiquant track2-delta-neutral-lab --fixture --config configs/strategy.json --max-candidates 50
+uv run defiquant track2-delta-neutral-lab --config configs/strategy.json --cmc-days 180 --max-candidates 200
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
@@ -80,5 +94,7 @@ live swaps are intentionally excluded from the Track 2 Skill package.
 - Confirm each non-stable fixture output includes the alpha pool reason keys.
 - Confirm `examples/regime-output.fixture.json` includes both regime lanes and
   reason keys for support, trend angle, Supertrend, cloud, and volume.
+- Confirm `examples/delta-neutral-output.fixture.json` includes no orders, no
+  wallet access, train/test split fields, and the selected long/short baskets.
 - Confirm `SKILL.md` contains no wallet mutation instructions.
 - Confirm `.env` and API keys are not included.

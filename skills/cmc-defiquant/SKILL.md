@@ -31,13 +31,22 @@ without executing trades.
      Ichimoku-lite cloud, and volume confirms distribution.
    - `range_or_transition`: use when the factors disagree and the skill should
      not express a directional preference.
-5. Apply risk guardrails:
+5. Build the non-executing Track 2 delta-neutral lab when requested:
+   - classify the market as bull, bear, or mixed from the equal-weight index
+     trend angle,
+   - classify each coin as up-channel, down-channel, or transition from its
+     trend angle and lookback momentum,
+   - create several long/short basket variants,
+   - scale the short leg to reduce market beta,
+   - run walk-forward train/test loops and report the best out-of-sample
+     candidate.
+6. Apply risk guardrails:
    - max drawdown circuit breaker,
    - max position weight,
    - minimum stable reserve,
    - daily turnover cap,
    - explicit fee and slippage assumptions.
-6. Return target weights with the reason tuple for each asset, plus the optional
+7. Return target weights with the reason tuple for each asset, plus the optional
    non-executing regime strategy spec when requested.
 
 ## Local Commands
@@ -47,6 +56,8 @@ uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
 uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
+uv run defiquant track2-delta-neutral-lab --fixture --config configs/strategy.json --max-candidates 50
+uv run defiquant track2-delta-neutral-lab --config configs/strategy.json --cmc-days 180 --max-candidates 200
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 ```

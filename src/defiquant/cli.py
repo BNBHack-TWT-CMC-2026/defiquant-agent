@@ -40,6 +40,7 @@ from defiquant.research import build_research_report, validate_research_config_c
 from defiquant.risk import RiskManager
 from defiquant.strategy import MomentumLiquidityStrategy
 from defiquant.submission_evidence import write_submission_evidence_bundle
+from defiquant.track2_delta_neutral import build_track2_delta_neutral_lab
 from defiquant.track2_regime import build_track2_regime_spec
 from defiquant.tuning import load_risk_tuning_candidates, rank_risk_candidates
 
@@ -62,6 +63,14 @@ def main() -> None:
     track2_regime_spec = subparsers.add_parser("track2-regime-spec")
     _add_market_args(track2_regime_spec)
     track2_regime_spec.add_argument("--top", type=int, default=10)
+
+    track2_delta_neutral = subparsers.add_parser("track2-delta-neutral-lab")
+    _add_market_args(track2_delta_neutral)
+    track2_delta_neutral.add_argument("--train-days", type=int, default=28)
+    track2_delta_neutral.add_argument("--test-days", type=int, default=7)
+    track2_delta_neutral.add_argument("--step-days", type=int, default=7)
+    track2_delta_neutral.add_argument("--max-candidates", type=int, default=200)
+    track2_delta_neutral.add_argument("--top", type=int, default=10)
 
     tune_risk = subparsers.add_parser("tune-risk")
     _add_market_args(tune_risk)
@@ -307,6 +316,29 @@ def main() -> None:
             cmc_end_date=args.cmc_end_date,
         )
         print(json.dumps(build_track2_regime_spec(config, market, top=args.top), indent=2))
+        return
+
+    if args.command == "track2-delta-neutral-lab":
+        market = _load_market(
+            args.fixture,
+            config.universe_symbols,
+            cmc_days=args.cmc_days,
+            cmc_end_date=args.cmc_end_date,
+        )
+        print(
+            json.dumps(
+                build_track2_delta_neutral_lab(
+                    config,
+                    market,
+                    train_days=args.train_days,
+                    test_days=args.test_days,
+                    step_days=args.step_days,
+                    max_candidates=args.max_candidates,
+                    top=args.top,
+                ),
+                indent=2,
+            )
+        )
         return
 
     if args.command == "profile":

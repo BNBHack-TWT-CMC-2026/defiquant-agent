@@ -24,13 +24,15 @@
   "outputs": {
     "signals": "Target weights with score rationale",
     "regime_strategy": "Non-executing up-channel long-bias and down-channel short-bias strategy spec",
+    "delta_neutral_lab": "Non-executing delta-neutral long/short basket walk-forward report",
     "risk": "Cash reserve and drawdown guardrail state"
   },
   "execution": "disabled",
   "examples": {
     "input": "examples/input.fixture.json",
     "output": "examples/output.fixture.json",
-    "regime_output": "examples/regime-output.fixture.json"
+    "regime_output": "examples/regime-output.fixture.json",
+    "delta_neutral_output": "examples/delta-neutral-output.fixture.json"
   },
   "safety": {
     "execution": "disabled",

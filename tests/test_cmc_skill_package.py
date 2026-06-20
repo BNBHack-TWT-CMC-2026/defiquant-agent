@@ -17,6 +17,7 @@ def test_cmc_skill_manifest_points_to_examples() -> None:
         "input": "examples/input.fixture.json",
         "output": "examples/output.fixture.json",
         "regime_output": "examples/regime-output.fixture.json",
+        "delta_neutral_output": "examples/delta-neutral-output.fixture.json",
     }
     assert manifest["safety"] == {
         "execution": "disabled",
@@ -87,6 +88,23 @@ def test_cmc_skill_regime_output_uses_regime_reason_keys() -> None:
         assert item["directional_bias"] in {"long", "short", "neutral"}
         reason_keys = {reason.split("=", maxsplit=1)[0] for reason in item["reasons"]}
         assert reason_keys == expected_reason_keys
+
+
+def test_cmc_skill_delta_neutral_output_is_non_executing_walk_forward() -> None:
+    output = json.loads((SKILL_DIR / "examples" / "delta-neutral-output.fixture.json").read_text())
+
+    assert output["mode"] == "track2_delta_neutral_lab"
+    assert output["execution"] == "disabled"
+    assert output["safety"]["orders"] == "not emitted"
+    assert output["best_candidate"]["parameters"]["variant"] in {
+        "angle_momentum",
+        "vol_adjusted",
+        "regime_adaptive",
+    }
+    assert output["latest_strategy_spec"]["long_symbols"]
+    assert output["latest_strategy_spec"]["short_symbols"]
+    assert output["periods"][0]["train_best"]
+    assert output["periods"][0]["test_result"]
 
 
 def test_cmc_skill_package_has_no_execution_instructions() -> None:

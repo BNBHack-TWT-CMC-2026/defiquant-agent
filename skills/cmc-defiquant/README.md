@@ -13,7 +13,10 @@ Expected behavior:
 3. Return target weights, rationale, and risk flags.
 4. Optionally return a non-executing regime strategy spec that splits coins into
    up-channel long-bias, down-channel short-bias, and neutral/transition lanes.
-5. Never execute trades in Track 2 mode.
+5. Optionally run a non-executing delta-neutral lab that searches long/short
+   basket variants with bull/bear/mixed market regimes, coin trend angles, beta
+   neutralization, transaction costs, and walk-forward out-of-sample reporting.
+6. Never execute trades in Track 2 mode.
 
 Alpha pool reasons use the same names as Track 1:
 
@@ -43,6 +46,8 @@ uv run defiquant signal --fixture --config configs/strategy.json
 uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
 uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
+uv run defiquant track2-delta-neutral-lab --fixture --config configs/strategy.json --max-candidates 50
+uv run defiquant track2-delta-neutral-lab --config configs/strategy.json --cmc-days 180 --max-candidates 200
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
@@ -61,3 +66,5 @@ Submission support files:
 - [examples/output.fixture.json](examples/output.fixture.json): deterministic target-weight output.
 - [examples/regime-output.fixture.json](examples/regime-output.fixture.json): deterministic
   regime strategy spec output.
+- [examples/delta-neutral-output.fixture.json](examples/delta-neutral-output.fixture.json):
+  deterministic delta-neutral lab output.

@@ -27,6 +27,9 @@ def test_track2_skill_metadata_is_non_executing() -> None:
         "mutation": "read-only analysis",
     }
     assert metadata["examples"]["regime_output"] == "examples/regime-output.fixture.json"
+    assert (
+        metadata["examples"]["delta_neutral_output"] == "examples/delta-neutral-output.fixture.json"
+    )
 
 
 def test_track2_fixture_input_matches_strategy_config() -> None:
@@ -97,6 +100,37 @@ def test_track2_regime_fixture_output_matches_cli(
 
     expected = json.loads(
         (SKILL_DIR / "examples/regime-output.fixture.json").read_text(encoding="utf-8")
+    )
+    actual = json.loads(capsys.readouterr().out)
+    assert actual == expected
+
+
+def test_track2_delta_neutral_fixture_output_matches_cli(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from defiquant.cli import main
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "defiquant",
+            "track2-delta-neutral-lab",
+            "--fixture",
+            "--config",
+            "configs/strategy.json",
+            "--max-candidates",
+            "12",
+            "--top",
+            "1",
+        ],
+    )
+
+    main()
+
+    expected = json.loads(
+        (SKILL_DIR / "examples/delta-neutral-output.fixture.json").read_text(encoding="utf-8")
     )
     actual = json.loads(capsys.readouterr().out)
     assert actual == expected

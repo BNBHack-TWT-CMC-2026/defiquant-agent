@@ -1,0 +1,222 @@
+{
+  "mode": "track2_delta_neutral_lab",
+  "execution": "disabled",
+  "methodology": {
+    "objective": "Walk-forward search over non-executing delta-neutral CMC strategy specs",
+    "regime_model": "Coin trend angles classify up_channel, down_channel, and transition regimes; equal-weight market angle classifies bull, bear, or mixed market state.",
+    "portfolio_construction": "Long strongest rising-angle basket and short weakest falling-angle basket; short leg is scaled to reduce market beta.",
+    "cost_model": "Configured fee_bps plus slippage_bps applied to turnover.",
+    "selection": "Train-period best risk-adjusted score is evaluated only on the next out-of-sample test period."
+  },
+  "safety": {
+    "wallet_access": "none",
+    "transaction_signing": "disabled",
+    "orders": "not emitted",
+    "output_use": "Track 2 strategy research and CMC Skill rationale only"
+  },
+  "parameters_tested": 12,
+  "loop_count": 13,
+  "walk_forward": {
+    "train_days": 28,
+    "test_days": 7,
+    "step_days": 7
+  },
+  "test_summary": {
+    "period_count": 1,
+    "tested_period_count": 1,
+    "average_test_return": -0.02474806,
+    "median_test_return": -0.02474806,
+    "test_return_t_stat": 0.0,
+    "profitable_test_pct": 0.0,
+    "eligible_test_pct": 1.0,
+    "worst_test_max_drawdown": 0.02191137,
+    "average_abs_net_beta": 0.0,
+    "total_test_trades": 32
+  },
+  "best_candidate": {
+    "parameters": {
+      "variant": "regime_adaptive",
+      "lookback_days": 7,
+      "basket_size": 2,
+      "gross_exposure": 1.0,
+      "min_abs_angle": 0.08,
+      "max_abs_net_beta": 0.1
+    },
+    "selected_periods": 1,
+    "eligible_test_periods": 1,
+    "average_test_return": -0.02474806,
+    "minimum_test_return": -0.02474806,
+    "worst_test_max_drawdown": 0.02191137,
+    "average_abs_net_beta": 0.0,
+    "total_test_trades": 32
+  },
+  "latest_strategy_spec": {
+    "timestamp": "2026-06-13T00:00:00+00:00",
+    "market_regime": "bear",
+    "weights": {
+      "CAKE": -0.26828204,
+      "LINK": 0.23171796,
+      "PENDLE": 0.23171796,
+      "TWT": -0.26828204
+    },
+    "long_symbols": [
+      "PENDLE",
+      "LINK"
+    ],
+    "short_symbols": [
+      "CAKE",
+      "TWT"
+    ],
+    "gross_exposure": 1.0,
+    "net_exposure": -0.07312815,
+    "net_beta": 0.0,
+    "reasons": [
+      "market_regime=bear",
+      "variant=regime_adaptive",
+      "lookback_days=7",
+      "basket_size=2",
+      "gross_exposure=1.0000",
+      "net_exposure=-0.0731",
+      "net_beta=0.0000"
+    ],
+    "coin_regimes": [
+      {
+        "symbol": "AAVE",
+        "regime": "down_channel",
+        "angle": -0.45167196,
+        "momentum": -0.0583337,
+        "beta": 0.92789434,
+        "volatility": 0.00545434,
+        "score": -0.37088204,
+        "reasons": [
+          "regime=down_channel",
+          "trend_angle=-0.4517",
+          "momentum=-0.0583",
+          "beta=0.9279",
+          "volatility=0.0055",
+          "score=-0.3709"
+        ]
+      },
+      {
+        "symbol": "CAKE",
+        "regime": "down_channel",
+        "angle": -0.63198627,
+        "momentum": -0.10173741,
+        "beta": 0.85361972,
+        "volatility": 0.00509232,
+        "score": -0.46344675,
+        "reasons": [
+          "regime=down_channel",
+          "trend_angle=-0.6320",
+          "momentum=-0.1017",
+          "beta=0.8536",
+          "volatility=0.0051",
+          "score=-0.4634"
+        ]
+      },
+      {
+        "symbol": "LINK",
+        "regime": "down_channel",
+        "angle": -0.3086965,
+        "momentum": -0.03620801,
+        "beta": 0.97740024,
+        "volatility": 0.00545428,
+        "score": -0.30127438,
+        "reasons": [
+          "regime=down_channel",
+          "trend_angle=-0.3087",
+          "momentum=-0.0362",
+          "beta=0.9774",
+          "volatility=0.0055",
+          "score=-0.3013"
+        ]
+      },
+      {
+        "symbol": "PENDLE",
+        "regime": "down_channel",
+        "angle": -0.1146504,
+        "momentum": -0.01266368,
+        "beta": 1.10788105,
+        "volatility": 0.00655077,
+        "score": -0.21240164,
+        "reasons": [
+          "regime=down_channel",
+          "trend_angle=-0.1147",
+          "momentum=-0.0127",
+          "beta=1.1079",
+          "volatility=0.0066",
+          "score=-0.2124"
+        ]
+      },
+      {
+        "symbol": "TWT",
+        "regime": "down_channel",
+        "angle": -0.56092544,
+        "momentum": -0.08136495,
+        "beta": 0.94745923,
+        "volatility": 0.00568183,
+        "score": -0.42911941,
+        "reasons": [
+          "regime=down_channel",
+          "trend_angle=-0.5609",
+          "momentum=-0.0814",
+          "beta=0.9475",
+          "volatility=0.0057",
+          "score=-0.4291"
+        ]
+      }
+    ]
+  },
+  "periods": [
+    {
+      "train_start": "2026-05-06T00:00:00+00:00",
+      "train_end": "2026-06-03T00:00:00+00:00",
+      "test_start": "2026-06-03T00:00:00+00:00",
+      "test_end": "2026-06-10T00:00:00+00:00",
+      "train_case_count": 12,
+      "train_eligible_count": 11,
+      "train_best": {
+        "parameters": {
+          "variant": "regime_adaptive",
+          "lookback_days": 7,
+          "basket_size": 2,
+          "gross_exposure": 1.0,
+          "min_abs_angle": 0.08,
+          "max_abs_net_beta": 0.1
+        },
+        "initial_value": 10000,
+        "final_value": 10769.64272702,
+        "total_return": 0.07696427,
+        "max_drawdown": 0.01771249,
+        "sharpe": 12.32143108,
+        "trades": 120,
+        "rebalances": 28,
+        "average_abs_net_beta": 0.06671916,
+        "turnover": 12.34123576,
+        "risk_stopped": false,
+        "eligible": true
+      },
+      "test_result": {
+        "parameters": {
+          "variant": "regime_adaptive",
+          "lookback_days": 7,
+          "basket_size": 2,
+          "gross_exposure": 1.0,
+          "min_abs_angle": 0.08,
+          "max_abs_net_beta": 0.1
+        },
+        "initial_value": 10000,
+        "final_value": 9752.519402,
+        "total_return": -0.02474806,
+        "max_drawdown": 0.02191137,
+        "sharpe": -29.44207332,
+        "trades": 32,
+        "rebalances": 7,
+        "average_abs_net_beta": 0.0,
+        "turnover": 6.11969402,
+        "risk_stopped": false,
+        "eligible": true
+      }
+    }
+  ]
+}
