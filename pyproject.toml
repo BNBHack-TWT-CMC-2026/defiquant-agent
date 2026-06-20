@@ -13,6 +13,7 @@ authors = [{ name = "defiQuant" }]
 dependencies = [
     "fastapi-cli>=0.0.24",
     "fastapi>=0.128.0",
+    "tqdm>=4.67.0",
 ]
 
 [project.scripts]
@@ -29,7 +30,7 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "-q"
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -45,10 +46,10 @@ line-ending = "lf"
 
 [tool.ty.environment]
 python-version = "3.14"
-root = ["./src"]
+root = ["./src", "."]
 
 [tool.ty.src]
-include = ["src", "tests"]
+include = ["src", "tests", "track1_volume_impulse_lab"]
 
 [tool.ty.terminal]
 output-format = "concise"

@@ -1,0 +1,19 @@
+{
+  "description": "Research-only Track 1 10-minute volume impulse optimization config.",
+  "lab": {
+    "seed": 1000.0,
+    "baseline_days": 30,
+    "period_days": 7,
+    "max_drawdown": 0.3,
+    "fee_bps": 5.0,
+    "slippage_bps": 10.0
+  },
+  "pairs": [
+    {
+      "symbol": "CAKE",
+      "contract_address": "0x0000000000000000000000000000000000000000",
+      "network_slug": "bsc",
+      "reverse_order": false
+    }
+  ]
+}
