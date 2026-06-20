@@ -7,6 +7,8 @@ from typing import Any
 
 from defiquant.data.cmc import (
     CmcClient,
+    cmc_credit_budget,
+    estimate_historical_ohlcv_credits,
     load_cmc_latest_quotes,
     load_cmc_market,
     parse_latest_quotes,
@@ -61,6 +63,59 @@ def test_load_cmc_market_fetches_each_symbol_with_date_window() -> None:
         ("CAKE", "2026-06-10T00:00:00Z", "2026-06-12T00:00:00Z"),
         ("USDT", "2026-06-10T00:00:00Z", "2026-06-12T00:00:00Z"),
     ]
+
+
+def test_load_cmc_market_uses_cache_without_spending_budget(tmp_path: Path) -> None:
+    client = FakeCmcClient()
+    budget = cmc_credit_budget("startup", max_credits_per_run=10)
+
+    first = load_cmc_market(
+        ("CAKE",),
+        days=2,
+        end_date=date(2026, 6, 12),
+        client=client,
+        cache_dir=tmp_path,
+        credit_budget=budget,
+    )
+    second = load_cmc_market(
+        ("CAKE",),
+        days=2,
+        end_date=date(2026, 6, 12),
+        client=client,
+        cache_dir=tmp_path,
+        credit_budget=budget,
+    )
+
+    assert first == second
+    assert len(client.calls) == 1
+    assert budget.estimated_credits == 1
+    assert budget.cache_hits == 1
+
+
+def test_cmc_credit_budget_blocks_expensive_runs() -> None:
+    client = FakeCmcClient()
+    budget = cmc_credit_budget("startup", max_credits_per_run=1)
+
+    try:
+        load_cmc_market(
+            ("CAKE", "USDT"),
+            days=120,
+            end_date=date(2026, 6, 12),
+            client=client,
+            credit_budget=budget,
+        )
+    except RuntimeError as exc:
+        assert "CMC credit budget exceeded" in str(exc)
+    else:
+        raise AssertionError("expected CMC credit budget to block the run")
+
+    assert client.calls == []
+
+
+def test_estimates_historical_ohlcv_credits_conservatively() -> None:
+    assert estimate_historical_ohlcv_credits(90, interval="daily") == 1
+    assert estimate_historical_ohlcv_credits(120, interval="daily") == 2
+    assert estimate_historical_ohlcv_credits(30, interval="5m") == 87
 
 
 def test_latest_quotes_uses_current_cmc_endpoint() -> None:

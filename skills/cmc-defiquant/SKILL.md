@@ -57,13 +57,23 @@ uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
 uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-delta-neutral-lab --fixture --config configs/strategy.json --max-candidates 50
-uv run defiquant track2-delta-neutral-lab --config configs/strategy.json --cmc-days 180 --max-candidates 200
+uv run defiquant track2-delta-neutral-lab \
+  --config configs/strategy.json \
+  --cmc-plan startup \
+  --cmc-days 90 \
+  --cmc-cache-dir artifacts/cmc-cache \
+  --cmc-max-credits-per-run 100 \
+  --max-candidates 200
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 ```
 
 Use fixture mode for deterministic package review. Use CMC mode only when
-`CMC_API_KEY` is configured.
+`CMC_API_KEY` is configured. Keep `--cmc-cache-dir` enabled for iterative
+strategy generation so CMC OHLCV calls happen once and candidate/parameter loops
+run locally from cached data. The `startup` guard estimates historical OHLCV
+credits before every cache miss and stops the run before exceeding the configured
+per-run budget.
 
 ## Output Contract
 

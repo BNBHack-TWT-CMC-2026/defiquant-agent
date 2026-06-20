@@ -73,11 +73,21 @@ uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
 uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-delta-neutral-lab --fixture --config configs/strategy.json --max-candidates 50
-uv run defiquant track2-delta-neutral-lab --config configs/strategy.json --cmc-days 180 --max-candidates 200
+uv run defiquant track2-delta-neutral-lab \
+  --config configs/strategy.json \
+  --cmc-plan startup \
+  --cmc-days 90 \
+  --cmc-cache-dir artifacts/cmc-cache \
+  --cmc-max-credits-per-run 100 \
+  --max-candidates 200
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
 ```
+
+CMC Startup plan usage is guarded by local OHLCV caching plus a per-run
+estimated credit ceiling. The Skill can keep generating candidate strategies
+from cached OHLCV data without spending additional CMC credits.
 
 Track 1 execution remains outside this package under the repository execution
 adapters and live-operation guardrails.

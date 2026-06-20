@@ -7,6 +7,7 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from math import isfinite
 from pathlib import Path
+from typing import TypedDict
 
 from defiquant.agent_endpoint import build_agent_endpoint_payloads
 from defiquant.agent_profile import build_agent_profile
@@ -28,7 +29,13 @@ from defiquant.backtest import Backtester
 from defiquant.bnb_agent import preview_bnb_registration, register_bnb_agent
 from defiquant.cmc_agent_context import build_cmc_agent_context_packet
 from defiquant.config import AppConfig, load_config, to_jsonable
-from defiquant.data.cmc import DEFAULT_CMC_HISTORY_DAYS, load_cmc_latest_quotes, load_cmc_market
+from defiquant.data.cmc import (
+    CMC_PLAN_PROFILES,
+    DEFAULT_CMC_HISTORY_DAYS,
+    cmc_credit_budget,
+    load_cmc_latest_quotes,
+    load_cmc_market,
+)
 from defiquant.data.fixtures import fixture_market
 from defiquant.env import env_value
 from defiquant.execution.paper import PaperExecutionAdapter
@@ -47,6 +54,14 @@ from defiquant.tuning import load_risk_tuning_candidates, rank_risk_candidates
 LIVE_CONFIRMATION_PHRASE = "I_UNDERSTAND_TWAK_LIVE_SWAP_RISK"
 BNB_AGENT_REGISTRATION_CONFIRMATION_PHRASE = "I_UNDERSTAND_BNB_AGENT_REGISTRATION_RISK"
 DEFAULT_TOKEN_ADDRESSES_PATH = "configs/token_addresses.bsc.json"
+
+
+class CmcMarketOptions(TypedDict):
+    cmc_end_date: str | None
+    cmc_plan: str
+    cmc_max_credits_per_run: int
+    cmc_cache_dir: str
+    cmc_refresh_cache: bool
 
 
 def main() -> None:
@@ -100,6 +115,7 @@ def main() -> None:
         "--cmc-end-date",
         help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
     )
+    _add_cmc_budget_args(research_report)
 
     alpha_lab = subparsers.add_parser("alpha-lab")
     alpha_lab.add_argument("--config", default="configs/strategy.defensive.json")
@@ -111,6 +127,7 @@ def main() -> None:
         "--cmc-end-date",
         help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
     )
+    _add_cmc_budget_args(alpha_lab)
 
     scan_alpha = subparsers.add_parser("scan-alpha")
     scan_alpha.add_argument("--config", default="configs/strategy.json")
@@ -192,6 +209,7 @@ def main() -> None:
         "--cmc-end-date",
         help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
     )
+    _add_cmc_budget_args(submission_evidence)
 
     cmc_context_packet = subparsers.add_parser("cmc-context-packet")
     cmc_context_packet.add_argument("--config", default="configs/strategy.json")
@@ -287,7 +305,7 @@ def main() -> None:
                 args.fixture,
                 config.universe_symbols,
                 cmc_days=days,
-                cmc_end_date=args.cmc_end_date,
+                **_cmc_market_options(args),
             )
             for days in _positive_ints(args.windows, label="--windows")
         }
@@ -313,7 +331,7 @@ def main() -> None:
             args.fixture,
             config.universe_symbols,
             cmc_days=args.cmc_days,
-            cmc_end_date=args.cmc_end_date,
+            **_cmc_market_options(args),
         )
         print(json.dumps(build_track2_regime_spec(config, market, top=args.top), indent=2))
         return
@@ -323,7 +341,7 @@ def main() -> None:
             args.fixture,
             config.universe_symbols,
             cmc_days=args.cmc_days,
-            cmc_end_date=args.cmc_end_date,
+            **_cmc_market_options(args),
         )
         print(
             json.dumps(
@@ -394,7 +412,7 @@ def main() -> None:
             args.fixture,
             config.universe_symbols,
             cmc_days=args.cmc_days,
-            cmc_end_date=args.cmc_end_date,
+            **_cmc_market_options(args),
         )
         candidates = load_risk_tuning_candidates(Path(args.candidates))
         ranked = rank_risk_candidates(config, market, candidates)
@@ -494,7 +512,7 @@ def main() -> None:
             args.fixture,
             config.universe_symbols,
             cmc_days=args.cmc_days,
-            cmc_end_date=args.cmc_end_date,
+            **_cmc_market_options(args),
         )
         result = Backtester(
             strategy,
@@ -522,7 +540,7 @@ def main() -> None:
             args.fixture,
             config.universe_symbols,
             cmc_days=args.cmc_days,
-            cmc_end_date=args.cmc_end_date,
+            **_cmc_market_options(args),
         )
         raw_signals = strategy.generate(market)
         prices = {symbol: candles[-1].close for symbol, candles in market.items() if candles}
@@ -616,6 +634,35 @@ def _add_market_args(parser: argparse.ArgumentParser) -> None:
         "--cmc-end-date",
         help="Last complete CMC daily candle date to request, formatted as YYYY-MM-DD.",
     )
+    _add_cmc_budget_args(parser)
+
+
+def _add_cmc_budget_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--cmc-plan",
+        choices=tuple(CMC_PLAN_PROFILES),
+        default="startup",
+        help="CMC plan guard profile for live API loading; default startup.",
+    )
+    parser.add_argument(
+        "--cmc-max-credits-per-run",
+        type=int,
+        default=0,
+        help=(
+            "Estimated CMC credits allowed for this run. "
+            "Default 0 uses the selected plan profile default."
+        ),
+    )
+    parser.add_argument(
+        "--cmc-cache-dir",
+        default="artifacts/cmc-cache",
+        help="Directory for CMC OHLCV response cache. Empty string disables cache.",
+    )
+    parser.add_argument(
+        "--cmc-refresh-cache",
+        action="store_true",
+        help="Ignore existing CMC OHLCV cache files and refresh from the API.",
+    )
 
 
 def _add_alpha_source_args(parser: argparse.ArgumentParser) -> None:
@@ -641,6 +688,10 @@ def _load_market(
     *,
     cmc_days: int,
     cmc_end_date: str | None,
+    cmc_plan: str = "startup",
+    cmc_max_credits_per_run: int = 0,
+    cmc_cache_dir: str = "artifacts/cmc-cache",
+    cmc_refresh_cache: bool = False,
 ) -> MarketData:
     if not use_fixture:
         try:
@@ -648,10 +699,26 @@ def _load_market(
                 symbols,
                 days=cmc_days,
                 end_date=date.fromisoformat(cmc_end_date) if cmc_end_date else None,
+                cache_dir=Path(cmc_cache_dir) if cmc_cache_dir else None,
+                refresh_cache=cmc_refresh_cache,
+                credit_budget=cmc_credit_budget(
+                    cmc_plan,
+                    max_credits_per_run=cmc_max_credits_per_run or None,
+                ),
             )
         except (OSError, RuntimeError, ValueError) as exc:
             raise SystemExit(f"CMC market loading failed: {exc}") from exc
     return fixture_market(symbols)
+
+
+def _cmc_market_options(args: argparse.Namespace) -> CmcMarketOptions:
+    return {
+        "cmc_end_date": args.cmc_end_date,
+        "cmc_plan": args.cmc_plan,
+        "cmc_max_credits_per_run": args.cmc_max_credits_per_run,
+        "cmc_cache_dir": args.cmc_cache_dir,
+        "cmc_refresh_cache": args.cmc_refresh_cache,
+    }
 
 
 def _build_research_report_payload(
@@ -667,7 +734,7 @@ def _build_research_report_payload(
             args.fixture,
             base_config.universe_symbols,
             cmc_days=days,
-            cmc_end_date=args.cmc_end_date,
+            **_cmc_market_options(args),
         )
         for days in _positive_ints(args.windows, label="--windows")
     }

@@ -47,7 +47,13 @@ uv run defiquant signal --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-regime-spec --fixture --config configs/strategy.json
 uv run defiquant track2-regime-spec --config configs/strategy.json --cmc-days 90
 uv run defiquant track2-delta-neutral-lab --fixture --config configs/strategy.json --max-candidates 50
-uv run defiquant track2-delta-neutral-lab --config configs/strategy.json --cmc-days 180 --max-candidates 200
+uv run defiquant track2-delta-neutral-lab \
+  --config configs/strategy.json \
+  --cmc-plan startup \
+  --cmc-days 90 \
+  --cmc-cache-dir artifacts/cmc-cache \
+  --cmc-max-credits-per-run 100 \
+  --max-candidates 200
 uv run defiquant backtest --config configs/strategy.json --cmc-days 90 --cmc-end-date 2026-06-12
 uv run defiquant research-report --windows 90,180,365
 uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
@@ -55,6 +61,10 @@ uv run defiquant alpha-lab --windows 90,180,365 --max-candidates 1000 --top 5
 
 `frontier-evidence` and TWAK dry-run commands are Track 1 evidence paths, not
 Track 2 Skill behavior. Track 2 returns target weights only.
+
+For CMC Startup plan runs, keep the default OHLCV cache on and raise
+`--max-candidates` instead of repeatedly refetching market data. Candidate loops
+are local CPU work after the first cached data load.
 
 The executable skill instructions are in [SKILL.md](SKILL.md). The JSON package
 metadata is in [skill.json](skill.json).
